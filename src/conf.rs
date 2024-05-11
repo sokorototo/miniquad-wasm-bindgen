@@ -40,7 +40,7 @@
 //! dpi_scale   -> 1.0
 //! ```
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum LinuxX11Gl {
 	/// Use libGLX.so/libGLX.so.0 and its funciton for creating OpenGL context
 	/// If there is no libGLX - just panic right away
@@ -55,7 +55,7 @@ pub enum LinuxX11Gl {
 	EGLWithGLXFallback,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum LinuxBackend {
 	X11Only,
 	WaylandOnly,
@@ -70,8 +70,8 @@ pub enum AppleGfxApi {
 }
 
 /// Platform specific settings.
-#[derive(Debug)]
-pub struct Platform {
+#[derive(Debug, Clone)]
+pub struct PlatformSettings {
 	/// On X11 there are two ways to get OpenGl context: libglx.so and libegl.so
 	/// Default is GLXWithEGLFallback - will try to create glx context and if fails -
 	/// try EGL. If EGL also fails - panic.
@@ -112,9 +112,9 @@ pub struct Platform {
 	pub web_canvas_query_selector: &'static str,
 }
 
-impl Default for Platform {
-	fn default() -> Platform {
-		Platform {
+impl Default for PlatformSettings {
+	fn default() -> PlatformSettings {
+		PlatformSettings {
 			linux_x11_gl: LinuxX11Gl::GLXWithEGLFallback,
 			swap_interval: None,
 			linux_backend: LinuxBackend::WaylandWithX11Fallback,
@@ -164,7 +164,7 @@ pub struct Conf {
 
 	/// Platform specific settings. Hints to OS for context creation, driver-specific
 	/// settings etc.
-	pub platform: Platform,
+	pub platform: PlatformSettings,
 }
 
 /// Icon image in three levels of detail.
