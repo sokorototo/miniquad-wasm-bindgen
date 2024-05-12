@@ -189,31 +189,31 @@ pub fn __private_api_log_lit(message: &str, level: Level, &(_, _, file, line): &
 
 	match level {
 		Level::Debug => {
-			let header = format!("%cDEBUG | %c{}[{}] {}", file, line, message).into();
+			let header = format!("%c[DEBUG] %c{}:{} {}", file, line, message).into();
 			let style = "color: blue; font-weight: bold".into();
 
 			console::debug_2(&header, &style);
 		}
 		Level::Warn => {
-			let header = format!("%cWARN | %c{}[{}] {}", file, line, message).into();
+			let header = format!("%c[WARN] %c{}:{} {}", file, line, message).into();
 			let style = "color: orange; font-weight: bold".into();
 
 			console::warn_2(&header, &style);
 		}
 		Level::Info => {
-			let header = format!("%cINFO | %c{}[{}] {}", file, line, message).into();
+			let header = format!("%c[INFO] %c{}:{} {}", file, line, message).into();
 			let style = "color: green; font-weight: bold".into();
 
 			console::info_2(&header, &style);
 		}
 		Level::Trace => {
-			let header = format!("%cTRACE | %c{}[{}] {}", file, line, message).into();
+			let header = format!("%c[TRACE] %c{}:{} {}", file, line, message).into();
 			let style = "color: grey; font-weight: bold".into();
 
 			console::debug_2(&header, &style);
 		}
 		Level::Error => {
-			let header = format!("%cERROR | %c{}[{}] {}", file, line, message).into();
+			let header = format!("%c[ERROR] %c{}:{} {}", file, line, message).into();
 			let style = "color: red; font-weight: bold".into();
 
 			console::error_2(&header, &style);
