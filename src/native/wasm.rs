@@ -253,6 +253,14 @@ fn init_mouse_events(canvas: &HtmlCanvasElement) {
 	canvas.add_event_listener_with_callback("mousedown", mouse_down_fn_ref).unwrap_throw();
 	canvas.add_event_listener_with_callback("mouseup", mouse_up_fn_ref).unwrap_throw();
 	canvas.add_event_listener_with_callback("wheel", mouse_wheel_fn_ref).unwrap_throw();
+
+	// the idea is that we let JS take control of memory management
+	// since this function is an event listener, it won't be GC'd by Javascript
+	// Closure::forget is specifically written to allow Closures to exist for the entire duration of the application
+	mouse_down_closure.forget();
+	mouse_move_closure.forget();
+	mouse_up_closure.forget();
+	mouse_wheel_closure.forget();
 }
 
 fn init_keyboard_events(canvas: &HtmlCanvasElement) {
@@ -330,6 +338,11 @@ fn init_keyboard_events(canvas: &HtmlCanvasElement) {
 	canvas.add_event_listener_with_callback("keypress", keypress_fn_ref).unwrap_throw();
 	canvas.add_event_listener_with_callback("keydown", key_up_fn_ref).unwrap_throw();
 	canvas.add_event_listener_with_callback("keydown", key_down_closure_ref).unwrap_throw();
+
+	// same here
+	key_down_closure.forget();
+	key_up_closure.forget();
+	keypress_closure.forget();
 }
 
 fn init_focus_events(canvas: &HtmlCanvasElement) {
@@ -362,6 +375,10 @@ fn init_focus_events(canvas: &HtmlCanvasElement) {
 	canvas.add_event_listener_with_callback("focus", focus_fn_ref).unwrap_throw();
 	canvas.add_event_listener_with_callback("blur", blur_fn_ref).unwrap_throw();
 	web_sys::window().unwrap().add_event_listener_with_callback("visibilitychange", visibility_change_fn_ref).unwrap_throw();
+
+	focus_closure.forget();
+	blur_closure.forget();
+	visibility_change_closure.forget();
 }
 
 fn init_resize_events(canvas: &HtmlCanvasElement) {
@@ -379,6 +396,7 @@ fn init_resize_events(canvas: &HtmlCanvasElement) {
 	let resize_observer = ResizeObserver::new(fn_ref).unwrap();
 
 	resize_observer.observe(canvas);
+	handler.forget();
 }
 
 fn init_touch_events(canvas: &HtmlCanvasElement) {
@@ -451,6 +469,11 @@ fn init_touch_events(canvas: &HtmlCanvasElement) {
 	canvas.add_event_listener_with_callback("touchmove", touch_move_fn_ref).unwrap_throw();
 	canvas.add_event_listener_with_callback("touchend", touch_end_fn_ref).unwrap_throw();
 	canvas.add_event_listener_with_callback("touchcancel", touch_cancel_fn_ref).unwrap_throw();
+
+	touch_start_closure.forget();
+	touch_move_closure.forget();
+	touch_end_closure.forget();
+	touch_cancel_closure.forget();
 }
 
 fn init_file_drop_events(canvas: &HtmlCanvasElement) {
@@ -499,6 +522,9 @@ fn init_file_drop_events(canvas: &HtmlCanvasElement) {
 
 	canvas.add_event_listener_with_callback("dragover", drag_over_fn_ref).unwrap_throw();
 	canvas.add_event_listener_with_callback("drop", drop_fn_ref).unwrap_throw();
+
+	drag_over_closure.forget();
+	drop_closure.forget();
 }
 
 struct Clipboard(Rc<RefCell<Option<String>>>);
@@ -553,6 +579,10 @@ impl Clipboard {
 		canvas.add_event_listener_with_callback("paste", paste_fn_ref).unwrap_throw();
 		canvas.add_event_listener_with_callback("copy", copy_fn_ref).unwrap_throw();
 		canvas.add_event_listener_with_callback("cut", cut_fn_ref).unwrap_throw();
+
+		paste_closure.forget();
+		copy_closure.forget();
+		cut_closure.forget();
 
 		Box::new(Self(state))
 	}
