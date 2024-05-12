@@ -356,7 +356,9 @@ pub fn is_gl2() -> bool {
 
 #[inline(always)]
 pub unsafe fn glGetIntegerv(_: u32, data: *mut GLint) {
-	// unimplemented!("glGetIntegerv is not implemented in webgl");
+	// TODO: Correct implementation of glGetIntegerv
+	#[cfg(feature = "log-impl")]
+	crate::warn!("STUB: glGetIntegerv isn't supported on WebGL");
 	let data: &mut GLint = data.as_mut().unwrap();
 	*data = 0;
 }
