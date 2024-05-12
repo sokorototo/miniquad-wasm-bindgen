@@ -76,6 +76,7 @@ features = [
 	# IO
 	"XmlHttpRequest",
 	"XmlHttpRequestResponseType",
+	"ProgressEvent",
 	"DataTransfer",
 	"File",
 	"FileList",
