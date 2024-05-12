@@ -497,14 +497,6 @@ fn init_file_drop_events(canvas: &HtmlCanvasElement) {
 	canvas.add_event_listener_with_callback("drop", drop_fn_ref).unwrap_throw();
 }
 
-#[no_mangle]
-pub extern "C" fn allocate_vec_u8(len: usize) -> *mut u8 {
-	let mut string = vec![0u8; len];
-	let ptr = string.as_mut_ptr();
-	string.leak();
-	ptr
-}
-
 struct Clipboard(Rc<RefCell<Option<String>>>);
 
 // SAFETY: The Web is single-threaded, so we are always on the same thread
