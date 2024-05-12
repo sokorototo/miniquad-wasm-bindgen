@@ -98,11 +98,6 @@ where
 	event_loop(main_canvas, "default", rx);
 }
 
-#[wasm_bindgen::prelude::wasm_bindgen]
-extern "C" {
-	fn requestAnimationFrame(callback: wasm_bindgen::JsValue);
-}
-
 fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static str, rx: Receiver<Request>) {
 	let event_handler = get_event_handler(None);
 	let mut next_cursor_css = last_cursor_css;
@@ -181,8 +176,12 @@ fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static
 
 	// in the words of Dj Khaled, another one!
 	let closure = Box::new(move || event_loop(main_canvas, next_cursor_css, rx));
-	let next = Closure::once_into_js(closure);
-	requestAnimationFrame(next);
+	let closure = Closure::once_into_js(closure);
+
+	if let Some(w) = web_sys::window() {
+		let callback = closure.dyn_ref().unwrap();
+		w.request_animation_frame(callback).unwrap_throw();
+	}
 }
 
 fn init_mouse_events(canvas: &HtmlCanvasElement) {
