@@ -216,6 +216,8 @@ fn init_mouse_events(canvas: &HtmlCanvasElement) {
 	});
 
 	let mouse_up_closure: Closure<dyn Fn(_)> = Closure::new(|ev: MouseEvent| {
+		ev.prevent_default();
+
 		let canvas = ev.target().unwrap().dyn_into::<HtmlCanvasElement>().unwrap();
 		let rect = canvas.get_bounding_client_rect();
 		let event_handler = get_event_handler(None);
