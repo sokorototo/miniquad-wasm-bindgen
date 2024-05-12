@@ -379,12 +379,8 @@ pub unsafe fn glGenFramebuffers(n: GLsizei, framebuffers: *mut GLuint) {
 }
 
 pub unsafe fn glBindFramebuffer(target: GLenum, framebuffer: GLuint) {
-	if framebuffer == 0 {
-		get_gl().bind_framebuffer(target, None);
-	} else {
-		debug_assert!(FRAME_BUFFERS.contains_key(&framebuffer));
-		get_gl().bind_framebuffer(target, FRAME_BUFFERS.get(&framebuffer));
-	}
+	debug_assert!(FRAME_BUFFERS.contains_key(&framebuffer) || framebuffer == 0);
+	get_gl().bind_framebuffer(target, FRAME_BUFFERS.get(&framebuffer));
 }
 
 pub unsafe fn glFramebufferTexture2D(target: GLenum, attachment: GLenum, textarget: GLenum, texture: GLuint, level: GLint) {

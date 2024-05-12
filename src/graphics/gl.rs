@@ -873,7 +873,12 @@ impl RenderingBackend for GlContext {
 			offset: i64,
 		}
 
-		let mut buffer_cache: Vec<BufferCacheData> = vec![BufferCacheData::default(); buffer_layout.len()];
+		let mut buffer_cache = unsafe {
+			let mut b = Vec::with_capacity(buffer_layout.len());
+			b.set_len(buffer_layout.len());
+			b.fill(BufferCacheData::default());
+			b
+		};
 
 		for VertexAttribute { format, buffer_index, .. } in attributes {
 			let layout = buffer_layout.get(*buffer_index).unwrap();
@@ -884,8 +889,6 @@ impl RenderingBackend for GlContext {
 			} else {
 				cache.stride = layout.stride;
 			}
-			// WebGL 1 limitation
-			assert!(cache.stride <= 255);
 		}
 
 		let program = self.shaders[shader.0].program;
