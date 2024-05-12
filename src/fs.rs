@@ -1,6 +1,9 @@
 #[cfg(target_os = "ios")]
 use crate::native::ios;
 
+/// A file-system loading error.
+///
+/// On `cfg!(target_arch = "wasm32")` contains a 5th variant `DownloadFailed((web_sys::ProgressEvent, Option<String>))` that stores download errors.
 #[derive(Debug)]
 pub enum Error {
 	IOError(std::io::Error),
@@ -30,7 +33,9 @@ impl From<std::io::Error> for Error {
 
 pub type Response = Result<Vec<u8>, Error>;
 
-/// Filesystem path on desktops or HTTP URL in WASM
+/// Filesystem path on desktops or HTTP URL in WASM.
+///
+/// Check for `DownloadFailed((web_sys::ProgressEvent, Option<String>))` on WASM
 pub fn load_file<F: FnOnce(Response) + 'static>(path: &str, on_loaded: F) {
 	#[cfg(target_arch = "wasm32")]
 	wasm::load_file(path, on_loaded);
