@@ -89,7 +89,7 @@ mod wasm {
 				xhr.set_timeout(5 * 1000); // 5 seconds
 
 				let xhr_1 = xhr.clone();
-				let present = Closure::once(move |ev: ProgressEvent| {
+				let present = Closure::once_into_js(move |ev: ProgressEvent| {
 					match xhr_1.response() {
 						Ok(d) => {
 							if xhr_1.status().unwrap() != 200 {

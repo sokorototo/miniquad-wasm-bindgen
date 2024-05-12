@@ -179,7 +179,7 @@ fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static
 	let closure = Closure::once_into_js(closure);
 
 	if let Some(w) = web_sys::window() {
-		let callback = closure.dyn_ref().unwrap();
+		let callback = closure.as_ref().unchecked_ref();
 		w.request_animation_frame(callback).unwrap_throw();
 	}
 }
@@ -337,7 +337,7 @@ fn init_keyboard_events(canvas: &HtmlCanvasElement) {
 	let key_up_fn_ref = key_up_closure.as_ref().unchecked_ref();
 
 	canvas.add_event_listener_with_callback("keypress", keypress_fn_ref).unwrap_throw();
-	canvas.add_event_listener_with_callback("keydown", key_up_fn_ref).unwrap_throw();
+	canvas.add_event_listener_with_callback("keyup", key_up_fn_ref).unwrap_throw();
 	canvas.add_event_listener_with_callback("keydown", key_down_closure_ref).unwrap_throw();
 
 	// same here
