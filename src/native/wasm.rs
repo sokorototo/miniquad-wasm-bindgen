@@ -176,7 +176,7 @@ fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static
 
 	// in the words of Dj Khaled, another one!
 	let closure = Box::new(move || event_loop(main_canvas, next_cursor_css, rx));
-	let next = Closure::once(closure);
+	let next = Closure::once_into_js(closure);
 	let fn_ref = next.as_ref().unchecked_ref();
 	web_sys::window().unwrap().request_animation_frame(fn_ref).unwrap();
 }
