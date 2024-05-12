@@ -1,10 +1,6 @@
-//mod texture;
-
 use crate::native::gl::*;
 
 use std::{error::Error, fmt::Display};
-
-//pub use texture::{FilterMode, TextureAccess, TextureFormat, TextureParams, TextureWrap};
 
 mod gl;
 
@@ -803,16 +799,7 @@ pub struct BufferId(usize);
 ///
 /// And during finalization:
 /// ```
-/// // clean-up
-/// # use miniquad_wasm_bindgen::graphics::ElapsedQuery;
-/// # let mut query = ElapsedQuery::new();
-/// # query.begin_query();
-/// # query.end_query();
-/// # if query.is_available() {
-/// #   let duration_nanoseconds = query.get_result();
-/// #   // use/display duration_nanoseconds
-/// # }
-/// query.delete();
+/// drop(query); // Automatically removed from the GPU during drop
 /// ```
 ///
 /// It is only possible to measure single query at once.
@@ -821,11 +808,13 @@ pub struct BufferId(usize);
 ///
 /// [`EXT_disjoint_timer_query`]: https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_disjoint_timer_query.txt
 ///
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct ElapsedQuery {
 	gl_query: GLuint,
 }
 
+/// TODO: Complete Implementation
+#[allow(unused_unsafe)]
 impl ElapsedQuery {
 	pub fn new() -> ElapsedQuery {
 		ElapsedQuery { gl_query: 0 }
@@ -867,12 +856,12 @@ impl ElapsedQuery {
 	/// available for retrieval.
 	///
 	/// Use [`ElapsedQuery::is_supported()`] to check if functionality is available and the method can be called.
-	pub fn get_result(&self) -> u64 {
+	pub fn get_result(&self) -> Option<u64> {
 		// let mut time: GLuint64 = 0;
 		// assert!(self.gl_query != 0);
 		// unsafe { glGetQueryObjectui64v(self.gl_query, GL_QUERY_RESULT, &mut time) };
 		// time
-		0
+		unimplemented!("ElapsedQuery::get_result()")
 	}
 
 	/// Reports whenever elapsed timer is supported and other methods can be invoked.
@@ -901,13 +890,10 @@ impl ElapsedQuery {
 
 		false
 	}
+}
 
-	/// Delete query.
-	///
-	/// Note that the query is not deleted automatically when dropped.
-	///
-	/// Implemented as `glDeleteQueries(...)` on OpenGL/WebGL platforms.
-	pub fn delete(&mut self) {
+impl Drop for ElapsedQuery {
+	fn drop(&mut self) {
 		unsafe { glDeleteQueries(1, &mut self.gl_query) }
 		self.gl_query = 0;
 	}

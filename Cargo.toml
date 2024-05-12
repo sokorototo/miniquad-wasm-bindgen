@@ -91,6 +91,8 @@ features = [
 	"WebGlTexture",
 	"WebGlActiveInfo",
 	"WebGlUniformLocation",
+	"WebGlQuery",
+	"WebGlBuffer",
 ]
 
 [dev-dependencies]

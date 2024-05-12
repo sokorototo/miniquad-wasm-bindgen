@@ -892,7 +892,6 @@ impl RenderingBackend for GlContext {
 		}
 
 		let program = self.shaders[shader.0].program;
-
 		let attributes_len = attributes
 			.iter()
 			.map(|layout| match layout.format {
@@ -907,7 +906,7 @@ impl RenderingBackend for GlContext {
 			let buffer_data = &mut buffer_cache.get_mut(*buffer_index).unwrap();
 			let layout = buffer_layout.get(*buffer_index).unwrap();
 
-			let cname = CString::new(*name).unwrap_or_else(|e| panic!("{}", e));
+			let cname = CString::new(*name).unwrap();
 			let attr_loc = unsafe { glGetAttribLocation(program, cname.as_ptr() as *const _) };
 			let attr_loc = if attr_loc == -1 { None } else { Some(attr_loc) };
 			let divisor = if layout.step_func == VertexStep::PerVertex { 0 } else { layout.step_rate };
@@ -919,6 +918,7 @@ impl RenderingBackend for GlContext {
 				format = VertexFormat::Float4;
 				attributes_count = 4;
 			}
+
 			for i in 0..attributes_count {
 				if let Some(attr_loc) = attr_loc {
 					let attr_loc = attr_loc as GLuint + i as GLuint;
@@ -1005,8 +1005,8 @@ impl RenderingBackend for GlContext {
 			BufferType::IndexBuffer => panic!("unsupported index buffer dimension"),
 			BufferType::VertexBuffer => None,
 		};
-		let mut gl_buf: u32 = 0;
 
+		let mut gl_buf: u32 = 0;
 		unsafe {
 			glGenBuffers(1, &mut gl_buf as *mut _);
 			self.cache.store_buffer_binding(gl_target);
@@ -1020,13 +1020,12 @@ impl RenderingBackend for GlContext {
 			self.cache.restore_buffer_binding(gl_target);
 		}
 
-		let buffer = Buffer {
+		self.buffers.push(Buffer {
 			gl_buf,
 			buffer_type: type_,
 			size,
 			index_type,
-		};
-		self.buffers.push(buffer);
+		});
 		BufferId(self.buffers.len() - 1)
 	}
 

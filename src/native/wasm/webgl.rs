@@ -449,7 +449,7 @@ pub fn glGetString(name: GLenum) -> *const GLubyte {
 	c_str.as_ptr() as _
 }
 
-// ==================== PROGRAMS & SHADERS ====================
+// ==================== SHADERS ====================
 
 static mut SHADERS: BTreeMap<u32, WebGlShader> = BTreeMap::new();
 
@@ -546,6 +546,8 @@ pub unsafe fn glGetShaderInfoLog(shader_idx: GLuint, bufSize: GLsizei, length: *
 	*length = len;
 }
 
+// ==================== PROGRAMS & UNIFORMS==================
+
 static mut PROGRAMS: BTreeMap<u32, WebGlProgram> = BTreeMap::new();
 
 pub unsafe fn glCreateProgram() -> GLuint {
@@ -569,6 +571,12 @@ pub unsafe fn glAttachShader(program_idx: GLuint, shader_idx: GLuint) {
 	gl.attach_shader(program, shader);
 }
 
+pub unsafe fn glGetAttribLocation(program: GLuint, name: *const GLchar) -> GLint {
+	let program = PROGRAMS.get(&program).unwrap_throw();
+	let name = std::ffi::CStr::from_ptr(name).to_str().unwrap_throw();
+	get_gl().get_attrib_location(program, name)
+}
+
 #[derive(Default)]
 struct ProgramInfo {
 	uniforms: BTreeMap<String, (WebGlActiveInfo, u32)>,
@@ -576,6 +584,97 @@ struct ProgramInfo {
 }
 
 static mut UNIFORMS: BTreeMap<u32, WebGlUniformLocation> = BTreeMap::new();
+
+pub unsafe fn glGetUniformLocation(program: GLuint, name: *const GLchar) -> GLint {
+	// If user passed an array accessor "[index]", parse the array index off the accessor.
+	let name = std::ffi::CStr::from_ptr(name).to_str().unwrap_throw();
+	let mut array_index = None;
+
+	// parse array index
+	if name.ends_with(']') {
+		let left_brace = name.rfind('[').unwrap_throw();
+
+		if left_brace != name.len() - 2 {
+			// input is "name[index]"
+			array_index = Some(name[left_brace + 1..name.len() - 1].parse::<usize>().unwrap_throw());
+		};
+	}
+
+	// get uniform location
+	let Some(program_info) = PROGRAM_INFOS.get(&program) else { return -1 };
+	if let Some((info, uniform_idx)) = program_info.uniforms.get(name) {
+		if array_index.is_some() && array_index.map(|a| a < info.size() as _).unwrap_or(false) {
+			return *uniform_idx as GLint + array_index.unwrap_or(0) as GLint;
+		}
+	};
+
+	-1 // Unable to find uniform
+}
+
+// TODO: Verify uniform code
+pub unsafe fn glUniform1iv(location: GLint, count: GLsizei, value: *const GLint) {
+	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
+
+	let data = unsafe { slice::from_raw_parts(value, count as usize) };
+	get_gl().uniform1iv_with_i32_array(UNIFORMS.get(&(location as u32)), data);
+}
+
+pub unsafe fn glUniform2iv(location: GLint, count: GLsizei, value: *const GLint) {
+	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
+
+	let data = unsafe { slice::from_raw_parts(value, (count * 2) as usize) };
+	get_gl().uniform2iv_with_i32_array(UNIFORMS.get(&(location as u32)), data);
+}
+
+pub unsafe fn glUniform3iv(location: GLint, count: GLsizei, value: *const GLint) {
+	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
+
+	let data = unsafe { slice::from_raw_parts(value, (count * 3) as usize) };
+	get_gl().uniform3iv_with_i32_array(UNIFORMS.get(&(location as u32)), data);
+}
+
+pub unsafe fn glUniform4iv(location: GLint, count: GLsizei, value: *const GLint) {
+	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
+
+	let data = unsafe { slice::from_raw_parts(value, (count * 4) as usize) };
+	get_gl().uniform4iv_with_i32_array(UNIFORMS.get(&(location as u32)), data);
+}
+
+pub unsafe fn glUniform1fv(location: GLint, count: GLsizei, value: *const GLfloat) {
+	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
+
+	let data = unsafe { slice::from_raw_parts(value, count as usize) };
+	get_gl().uniform1fv_with_f32_array(UNIFORMS.get(&(location as u32)), data);
+}
+
+pub unsafe fn glUniform2fv(location: GLint, count: GLsizei, value: *const GLfloat) {
+	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
+
+	let data = unsafe { slice::from_raw_parts(value, (count * 2) as usize) };
+	get_gl().uniform2fv_with_f32_array(UNIFORMS.get(&(location as u32)), data);
+}
+
+pub unsafe fn glUniform3fv(location: GLint, count: GLsizei, value: *const GLfloat) {
+	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
+
+	let data = unsafe { slice::from_raw_parts(value, (count * 3) as usize) };
+	get_gl().uniform3fv_with_f32_array(UNIFORMS.get(&(location as u32)), data);
+}
+
+pub unsafe fn glUniform4fv(location: GLint, count: GLsizei, value: *const GLfloat) {
+	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
+
+	let data = unsafe { slice::from_raw_parts(value, (count * 4) as usize) };
+	get_gl().uniform4fv_with_f32_array(UNIFORMS.get(&(location as u32)), data);
+}
+
+pub unsafe fn glUniformMatrix4fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat) {
+	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
+
+	let data = unsafe { slice::from_raw_parts(value, (count * 16) as usize) };
+	get_gl().uniform_matrix4fv_with_f32_array(UNIFORMS.get(&(location as u32)), transpose != 0, data);
+}
+
 static mut PROGRAM_INFOS: BTreeMap<u32, ProgramInfo> = BTreeMap::new();
 
 pub unsafe fn glLinkProgram(program_idx: GLuint) {
@@ -682,30 +781,26 @@ pub unsafe fn glUseProgram(program_idx: GLuint) {
 	gl.use_program(PROGRAMS.get(&program_idx));
 }
 
-pub unsafe fn glGetUniformLocation(program: GLuint, name: *const GLchar) -> GLint {
-	// If user passed an array accessor "[index]", parse the array index off the accessor.
-	let name = std::ffi::CStr::from_ptr(name).to_str().unwrap_throw();
-	let mut array_index = None;
+// =============== INSTANCED RENDERING =================
 
-	// parse array index
-	if name.ends_with(']') {
-		let left_brace = name.rfind('[').unwrap_throw();
+#[inline(always)]
+pub fn glVertexAttribPointer(index: GLuint, size: GLint, type_: GLenum, normalized: GLboolean, stride: GLsizei, pointer: *const ::std::os::raw::c_void) {
+	get_gl().vertex_attrib_pointer_with_i32(index, size, type_, normalized != 0, stride, pointer as _);
+}
 
-		if left_brace != name.len() - 2 {
-			// input is "name[index]"
-			array_index = Some(name[left_brace + 1..name.len() - 1].parse::<usize>().unwrap_throw());
-		};
-	}
+#[inline(always)]
+pub fn glVertexAttribDivisor(index: GLuint, divisor: GLuint) {
+	get_gl().vertex_attrib_divisor(index, divisor)
+}
 
-	// get uniform location
-	let Some(program_info) = PROGRAM_INFOS.get(&program) else { return -1 };
-	if let Some((info, uniform_idx)) = program_info.uniforms.get(name) {
-		if array_index.is_some() && array_index.map(|a| a < info.size() as _).unwrap_or(false) {
-			return *uniform_idx as GLint + array_index.unwrap_or(0) as GLint;
-		}
-	};
+#[inline(always)]
+pub fn glEnableVertexAttribArray(index: GLuint) {
+	get_gl().enable_vertex_attrib_array(index)
+}
 
-	-1 // Unable to find uniform
+#[inline(always)]
+pub fn glDisableVertexAttribArray(index: GLuint) {
+	get_gl().disable_vertex_attrib_array(index)
 }
 
 // ==================== TEXTURES ====================
@@ -793,6 +888,7 @@ pub unsafe fn glDeleteTextures(n: GLsizei, textures: *const GLuint) {
 	}
 }
 
+#[inline(always)]
 pub fn glGenerateMipmap(target: GLenum) {
 	get_gl().generate_mipmap(target);
 }
@@ -802,6 +898,11 @@ pub fn glGenerateMipmap(target: GLenum) {
 #[inline(always)]
 pub fn glEnable(cap: GLenum) {
 	get_gl().enable(cap)
+}
+
+#[inline(always)]
+pub fn glDisable(cap: GLenum) {
+	get_gl().disable(cap)
 }
 
 #[inline(always)]
@@ -820,11 +921,6 @@ pub fn glBlendFunc(sfactor: GLenum, dfactor: GLenum) {
 }
 
 #[inline(always)]
-pub fn glDisable(cap: GLenum) {
-	get_gl().disable(cap)
-}
-
-#[inline(always)]
 pub fn glBlendColor(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat) {
 	get_gl().blend_color(red, green, blue, alpha)
 }
@@ -834,7 +930,27 @@ pub fn glBlendEquation(mode: GLenum) {
 	get_gl().blend_equation(mode)
 }
 
-// ==================== STENCILS ====================
+#[inline(always)]
+pub fn glDepthFunc(func: GLenum) {
+	get_gl().depth_func(func)
+}
+
+#[inline(always)]
+pub fn glCullFace(mode: GLenum) {
+	get_gl().cull_face(mode)
+}
+
+#[inline(always)]
+pub fn glColorMask(red: GLboolean, green: GLboolean, blue: GLboolean, alpha: GLboolean) {
+	get_gl().color_mask(red != 0, green != 0, blue != 0, alpha != 0)
+}
+
+#[inline(always)]
+pub fn glFrontFace(mode: GLenum) {
+	get_gl().front_face(mode)
+}
+
+// ==================== STENCILS & CULLING====================
 
 #[inline(always)]
 pub fn glStencilFunc(func: GLenum, ref_: GLint, mask: GLuint) {
@@ -866,53 +982,161 @@ pub fn glStencilOpSeparate(face: GLenum, sfail: GLenum, dpfail: GLenum, dppass: 
 	get_gl().stencil_op_separate(face, sfail, dpfail, dppass)
 }
 
-// ==================== CULLING ====================
+// ============= GPU QUERIES ================
+static mut QUERIES: BTreeMap<u32, WebGlQuery> = BTreeMap::new();
 
-pub fn glCullFace(mode: GLenum) {
-	get_gl().cull_face(mode)
+pub unsafe fn glGenQueries(n: GLsizei, ids: *mut GLuint) {
+	debug_assert!(ids.as_ref().is_some());
+
+	let n = n as usize;
+	let ids = slice::from_raw_parts_mut(ids, n);
+
+	for id in ids {
+		if let Some(query) = get_gl().create_query() {
+			*id = counter::increment();
+			QUERIES.insert(*id, query);
+		}
+	}
 }
 
-pub fn glColorMask(red: GLboolean, green: GLboolean, blue: GLboolean, alpha: GLboolean) {
-	get_gl().color_mask(red != 0, green != 0, blue != 0, alpha != 0)
+#[inline(always)]
+pub unsafe fn glBeginQuery(target: GLenum, id: GLuint) {
+	debug_assert!(QUERIES.contains_key(&id));
+
+	if let Some(query) = QUERIES.get(&id) {
+		get_gl().begin_query(target, query);
+	}
+}
+
+#[inline(always)]
+pub fn glEndQuery(target: GLenum) {
+	get_gl().end_query(target);
+}
+
+#[inline(always)]
+pub unsafe fn glDeleteQueries(n: GLsizei, ids: *const GLuint) {
+	debug_assert!(ids.as_ref().is_some());
+
+	for id in slice::from_raw_parts(ids, n as usize) {
+		let query = QUERIES.remove(id);
+		get_gl().delete_query(query.as_ref());
+	}
+}
+
+// ============= BUFFERS ================
+static mut BUFFERS: BTreeMap<u32, WebGlBuffer> = BTreeMap::new();
+
+pub unsafe fn glGenBuffers(n: GLsizei, buffers: *mut GLuint) {
+	let n = n as usize;
+	debug_assert!(buffers.as_ref().is_some());
+
+	for id in slice::from_raw_parts_mut(buffers, n) {
+		if let Some(buffer) = get_gl().create_buffer() {
+			*id = counter::increment();
+			BUFFERS.insert(*id, buffer);
+		}
+	}
+}
+
+#[inline(always)]
+pub unsafe fn glBufferData(target: GLenum, size: GLsizeiptr, data: *const ::std::os::raw::c_void, usage: GLenum) {
+	debug_assert!(data.as_ref().is_some());
+	let data = slice::from_raw_parts(data as *const u8, size as usize);
+
+	get_gl().buffer_data_with_u8_array(target, data, usage);
+}
+
+pub unsafe fn glBufferSubData(target: GLenum, offset: GLintptr, size: GLsizeiptr, data: *const ::std::os::raw::c_void) {
+	debug_assert!(data.as_ref().is_some());
+	let data = slice::from_raw_parts(data as *const u8, size as usize);
+
+	get_gl().buffer_sub_data_with_i32_and_u8_array(target, offset, data);
+}
+
+#[inline(always)]
+pub unsafe fn glBindBuffer(target: GLenum, buffer: GLuint) {
+	debug_assert!(BUFFERS.contains_key(&buffer));
+	get_gl().bind_buffer(target, BUFFERS.get(&buffer));
+}
+
+pub unsafe fn glDeleteBuffers(n: GLsizei, buffers: *const GLuint) {
+	let n = n as usize;
+	debug_assert!(buffers.as_ref().is_some());
+
+	for id in slice::from_raw_parts(buffers, n) {
+		let buffer = BUFFERS.remove(id);
+		get_gl().delete_buffer(buffer.as_ref());
+	}
+}
+
+// ================ VIEWPORT ====================
+
+#[inline(always)]
+pub fn glViewport(x: GLint, y: GLint, width: GLsizei, height: GLsizei) {
+	get_gl().viewport(x, y, width, height);
+}
+
+#[inline(always)]
+pub fn glScissor(x: GLint, y: GLint, width: GLsizei, height: GLsizei) {
+	get_gl().scissor(x, y, width, height);
+}
+
+// =============== INSTANCED RENDERING ========
+#[inline(always)]
+pub fn glDrawArraysInstanced(mode: GLenum, first: GLint, count: GLsizei, instance_count: GLsizei) {
+	get_gl().draw_arrays_instanced(mode, first, count, instance_count)
+}
+
+#[inline(always)]
+pub fn glDrawElementsInstanced(mode: GLenum, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void, instance_count: GLsizei) {
+	get_gl().draw_elements_instanced_with_i32(mode, count, type_, indices as _, instance_count)
+}
+
+// ================ CLEAR COLOUR ========
+
+#[inline(always)]
+pub fn glClearColor(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat) {
+	get_gl().clear_color(red, green, blue, alpha)
+}
+
+#[inline(always)]
+pub fn glClearDepthf(depth: GLfloat) {
+	get_gl().clear_depth(depth)
+}
+
+#[inline(always)]
+pub fn glClear(mask: GLbitfield) {
+	get_gl().clear(mask)
+}
+
+#[inline(always)]
+pub fn glClearStencil(s: GLint) {
+	get_gl().clear_stencil(s)
 }
 
 extern "C" {
 	pub fn glBindAttribLocation(program: GLuint, index: GLuint, name: *const GLchar);
-	pub fn glBindBuffer(target: GLenum, buffer: GLuint);
 	pub fn glBindRenderbuffer(target: GLenum, renderbuffer: GLuint);
-	pub fn glBufferData(target: GLenum, size: GLsizeiptr, data: *const ::std::os::raw::c_void, usage: GLenum);
-	pub fn glBufferSubData(target: GLenum, offset: GLintptr, size: GLsizeiptr, data: *const ::std::os::raw::c_void);
 	pub fn glCheckFramebufferStatus(target: GLenum) -> GLenum;
-	pub fn glClear(mask: GLbitfield);
-	pub fn glClearColor(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat);
-	pub fn glClearDepthf(d: GLfloat);
-	pub fn glClearStencil(s: GLint);
 	pub fn glCompressedTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, width: GLsizei, height: GLsizei, border: GLint, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
 	pub fn glCompressedTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
 	pub fn glCopyTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, x: GLint, y: GLint, width: GLsizei, height: GLsizei, border: GLint);
 	pub fn glCopyTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, x: GLint, y: GLint, width: GLsizei, height: GLsizei);
-	pub fn glDeleteBuffers(n: GLsizei, buffers: *const GLuint);
 	pub fn glDeleteProgram(program: GLuint);
 	pub fn glDeleteRenderbuffers(n: GLsizei, renderbuffers: *const GLuint);
 	pub fn glDeleteShader(shader: GLuint);
-	pub fn glDepthFunc(func: GLenum);
 	pub fn glDepthMask(flag: GLboolean);
 	pub fn glDepthRangef(n: GLfloat, f: GLfloat);
 	pub fn glDetachShader(program: GLuint, shader: GLuint);
-	pub fn glDisableVertexAttribArray(index: GLuint);
 	pub fn glDrawArrays(mode: GLenum, first: GLint, count: GLsizei);
 	pub fn glDrawElements(mode: GLenum, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void);
-	pub fn glEnableVertexAttribArray(index: GLuint);
 	pub fn glFinish();
 	pub fn glFlush();
 	pub fn glFramebufferRenderbuffer(target: GLenum, attachment: GLenum, renderbuffertarget: GLenum, renderbuffer: GLuint);
-	pub fn glFrontFace(mode: GLenum);
-	pub fn glGenBuffers(n: GLsizei, buffers: *mut GLuint);
 	pub fn glGenRenderbuffers(n: GLsizei, renderbuffers: *mut GLuint);
 	pub fn glGetActiveAttrib(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLint, type_: *mut GLenum, name: *mut GLchar);
 	pub fn glGetActiveUniform(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLint, type_: *mut GLenum, name: *mut GLchar);
 	pub fn glGetAttachedShaders(program: GLuint, maxCount: GLsizei, count: *mut GLsizei, shaders: *mut GLuint);
-	pub fn glGetAttribLocation(program: GLuint, name: *const GLchar) -> GLint;
 	pub fn glGetBooleanv(pname: GLenum, data: *mut GLboolean);
 	pub fn glGetBufferParameteriv(target: GLenum, pname: GLenum, params: *mut GLint);
 	pub fn glGetError() -> GLenum;
@@ -941,31 +1165,21 @@ extern "C" {
 	pub fn glReleaseShaderCompiler();
 	pub fn glRenderbufferStorage(target: GLenum, internalformat: GLenum, width: GLsizei, height: GLsizei);
 	pub fn glSampleCoverage(value: GLfloat, invert: GLboolean);
-	pub fn glScissor(x: GLint, y: GLint, width: GLsizei, height: GLsizei);
 	pub fn glShaderBinary(count: GLsizei, shaders: *const GLuint, binaryformat: GLenum, binary: *const ::std::os::raw::c_void, length: GLsizei);
 
 	pub fn glTexParameterf(target: GLenum, pname: GLenum, param: GLfloat);
 	pub fn glTexParameterfv(target: GLenum, pname: GLenum, params: *const GLfloat);
 	pub fn glTexParameteriv(target: GLenum, pname: GLenum, params: *const GLint);
 	pub fn glUniform1f(location: GLint, v0: GLfloat);
-	pub fn glUniform1fv(location: GLint, count: GLsizei, value: *const GLfloat);
 	pub fn glUniform1i(location: GLint, v0: GLint);
-	pub fn glUniform1iv(location: GLint, count: GLsizei, value: *const GLint);
 	pub fn glUniform2f(location: GLint, v0: GLfloat, v1: GLfloat);
-	pub fn glUniform2fv(location: GLint, count: GLsizei, value: *const GLfloat);
 	pub fn glUniform2i(location: GLint, v0: GLint, v1: GLint);
-	pub fn glUniform2iv(location: GLint, count: GLsizei, value: *const GLint);
 	pub fn glUniform3f(location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat);
-	pub fn glUniform3fv(location: GLint, count: GLsizei, value: *const GLfloat);
 	pub fn glUniform3i(location: GLint, v0: GLint, v1: GLint, v2: GLint);
-	pub fn glUniform3iv(location: GLint, count: GLsizei, value: *const GLint);
 	pub fn glUniform4f(location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat, v3: GLfloat);
-	pub fn glUniform4fv(location: GLint, count: GLsizei, value: *const GLfloat);
 	pub fn glUniform4i(location: GLint, v0: GLint, v1: GLint, v2: GLint, v3: GLint);
-	pub fn glUniform4iv(location: GLint, count: GLsizei, value: *const GLint);
 	pub fn glUniformMatrix2fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
 	pub fn glUniformMatrix3fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
-	pub fn glUniformMatrix4fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
 	pub fn glValidateProgram(program: GLuint);
 	pub fn glVertexAttrib1f(index: GLuint, x: GLfloat);
 	pub fn glVertexAttrib1fv(index: GLuint, v: *const GLfloat);
@@ -975,8 +1189,6 @@ extern "C" {
 	pub fn glVertexAttrib3fv(index: GLuint, v: *const GLfloat);
 	pub fn glVertexAttrib4f(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat);
 	pub fn glVertexAttrib4fv(index: GLuint, v: *const GLfloat);
-	pub fn glVertexAttribPointer(index: GLuint, size: GLint, type_: GLenum, normalized: GLboolean, stride: GLsizei, pointer: *const ::std::os::raw::c_void);
-	pub fn glViewport(x: GLint, y: GLint, width: GLsizei, height: GLsizei);
 	pub fn glReadBuffer(src: GLenum);
 	pub fn glDrawRangeElements(mode: GLenum, start: GLuint, end: GLuint, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void);
 	pub fn glTexImage3D(
@@ -1019,11 +1231,8 @@ extern "C" {
 		imageSize: GLsizei,
 		data: *const ::std::os::raw::c_void,
 	);
-	pub fn glGenQueries(n: GLsizei, ids: *mut GLuint);
-	pub fn glDeleteQueries(n: GLsizei, ids: *const GLuint);
+
 	pub fn glIsQuery(id: GLuint) -> GLboolean;
-	pub fn glBeginQuery(target: GLenum, id: GLuint);
-	pub fn glEndQuery(target: GLenum);
 	pub fn glGetQueryiv(target: GLenum, pname: GLenum, params: *mut GLint);
 	pub fn glQueryCounter(id: GLenum, pname: GLenum);
 	pub fn glGetQueryObjectiv(id: GLuint, pname: GLenum, params: *mut GLint);
@@ -1079,8 +1288,7 @@ extern "C" {
 	pub fn glGetActiveUniformBlockiv(program: GLuint, uniformBlockIndex: GLuint, pname: GLenum, params: *mut GLint);
 	pub fn glGetActiveUniformBlockName(program: GLuint, uniformBlockIndex: GLuint, bufSize: GLsizei, length: *mut GLsizei, uniformBlockName: *mut GLchar);
 	pub fn glUniformBlockBinding(program: GLuint, uniformBlockIndex: GLuint, uniformBlockBinding: GLuint);
-	pub fn glDrawArraysInstanced(mode: GLenum, first: GLint, count: GLsizei, instancecount: GLsizei);
-	pub fn glDrawElementsInstanced(mode: GLenum, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void, instancecount: GLsizei);
+
 	pub fn glFenceSync(condition: GLenum, flags: GLbitfield) -> GLsync;
 	pub fn glIsSync(sync: GLsync) -> GLboolean;
 	pub fn glDeleteSync(sync: GLsync);
@@ -1100,7 +1308,6 @@ extern "C" {
 	pub fn glSamplerParameterfv(sampler: GLuint, pname: GLenum, param: *const GLfloat);
 	pub fn glGetSamplerParameteriv(sampler: GLuint, pname: GLenum, params: *mut GLint);
 	pub fn glGetSamplerParameterfv(sampler: GLuint, pname: GLenum, params: *mut GLfloat);
-	pub fn glVertexAttribDivisor(index: GLuint, divisor: GLuint);
 	pub fn glBindTransformFeedback(target: GLenum, id: GLuint);
 	pub fn glDeleteTransformFeedbacks(n: GLsizei, ids: *const GLuint);
 	pub fn glGenTransformFeedbacks(n: GLsizei, ids: *mut GLuint);

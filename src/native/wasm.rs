@@ -65,7 +65,7 @@ where
 	webgl_attributes.power_preference(WebGlPowerPreference::HighPerformance);
 	webgl_attributes.stencil(true);
 
-	// setup webgl context
+	// setup webgl2 context
 	let gl = main_canvas
 		.get_context_with_context_options("webgl2", &webgl_attributes.into())
 		.unwrap_throw()
