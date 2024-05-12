@@ -4,7 +4,7 @@
 
 #![allow(non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, slice};
 
 use wasm_bindgen::*;
 use web_sys::*;
@@ -330,7 +330,6 @@ pub(crate) fn set_gl(gl: WebGl2RenderingContext) {
 	}
 }
 
-#[allow(dead_code)]
 pub(crate) fn get_gl() -> &'static WebGl2RenderingContext {
 	unsafe { GL.as_ref().expect_throw("WebGL context not created!") }
 }
@@ -356,22 +355,73 @@ pub fn is_gl2() -> bool {
 }
 
 #[inline(always)]
-// Shortcut implementation because I couldn't be bothered to write the whole thing X)
 pub unsafe fn glGetIntegerv(_: u32, data: *mut GLint) {
-	let data: &mut GLint = data.as_mut().unwrap();
-	*data = 0;
+	unimplemented!("glGetIntegerv is not implemented in webgl");
+	// let data: &mut GLint = data.as_mut().unwrap();
+	// *data = 0;
 }
 
-pub unsafe fn glGenFramebuffers(_n: GLsizei, _framebuffers: *mut GLuint) {
-	unimplemented!("glGenFramebuffers");
+// ==================== FRAME BUFFERS ====================
+
+static mut FRAME_BUFFERS: BTreeMap<u32, WebGlFramebuffer> = BTreeMap::new();
+
+pub unsafe fn glGenFramebuffers(n: GLsizei, framebuffers: *mut GLuint) {
+	let n = n as usize;
+	let framebuffers = slice::from_raw_parts_mut(framebuffers, n);
+
+	for i in 0..n {
+		if let Some(fb) = get_gl().create_framebuffer() {
+			let id = counter::increment();
+			FRAME_BUFFERS.insert(id, fb);
+			framebuffers[i] = id;
+		}
+	}
 }
 
-// SAFETY: Webassembly is single-threaded
+pub unsafe fn glBindFramebuffer(target: GLenum, framebuffer: GLuint) {
+	if framebuffer == 0 {
+		get_gl().bind_framebuffer(target, None);
+	} else {
+		debug_assert!(FRAME_BUFFERS.contains_key(&framebuffer));
+		get_gl().bind_framebuffer(target, FRAME_BUFFERS.get(&framebuffer));
+	}
+}
+
+pub unsafe fn glFramebufferTexture2D(target: GLenum, attachment: GLenum, textarget: GLenum, texture: GLuint, level: GLint) {
+	debug_assert!(TEXTURES.contains_key(&texture));
+	let texture = TEXTURES.get(&texture);
+	get_gl().framebuffer_texture_2d(target, attachment, textarget, texture, level)
+}
+
+pub unsafe fn glDeleteFramebuffers(n: GLsizei, framebuffers: *const GLuint) {
+	let framebuffers = unsafe { slice::from_raw_parts(framebuffers, n as usize) };
+
+	for fb in framebuffers {
+		let framebuffer = FRAME_BUFFERS.remove(fb);
+		get_gl().delete_framebuffer(framebuffer.as_ref());
+	}
+}
+
+pub unsafe fn glDrawBuffers(n: GLsizei, bufs: *const GLenum) {
+	let n = n as usize;
+	let bufs = slice::from_raw_parts(bufs, n);
+
+	let array = js_sys::Array::new_with_length(bufs.len() as _);
+	for (i, buf) in bufs.iter().enumerate() {
+		array.set(i as u32, JsValue::from(*buf));
+	}
+
+	let gl = get_gl();
+	gl.draw_buffers(&array);
+}
+
+// ==================== VERTEX ARRAYS ====================
+
 static mut VERTEX_ARRAY_OBJECTS: BTreeMap<u32, WebGlVertexArrayObject> = BTreeMap::new();
 
 pub unsafe fn glGenVertexArrays(n: GLsizei, vertex_arrays: *mut GLuint) {
 	let gl = get_gl();
-	let arrays = std::slice::from_raw_parts_mut(vertex_arrays, n as usize);
+	let arrays = slice::from_raw_parts_mut(vertex_arrays, n as usize);
 
 	for va in arrays {
 		let vao = gl.create_vertex_array().unwrap();
@@ -384,15 +434,13 @@ pub unsafe fn glGenVertexArrays(n: GLsizei, vertex_arrays: *mut GLuint) {
 	}
 }
 
-pub unsafe fn glBindVertexArray(array: GLuint) {
-	if array == 0 {
-		throw_str("glBindVertexArray failed! Vertex array 0 is reserved for error cases!");
-	}
-
+pub unsafe fn glBindVertexArray(vao: GLuint) {
+	debug_assert!(VERTEX_ARRAY_OBJECTS.contains_key(&vao));
 	let gl = get_gl();
-	let vao = VERTEX_ARRAY_OBJECTS.get(&array).unwrap_throw();
-	gl.bind_vertex_array(Some(vao));
+	gl.bind_vertex_array(VERTEX_ARRAY_OBJECTS.get(&vao));
 }
+
+// ==================== GET STRING ====================
 
 pub fn glGetString(name: GLenum) -> *const GLubyte {
 	let param = get_gl().get_parameter(name).unwrap();
@@ -401,11 +449,12 @@ pub fn glGetString(name: GLenum) -> *const GLubyte {
 	let c_str = std::ffi::CString::new(param).unwrap();
 	let c_str = std::mem::ManuallyDrop::new(c_str);
 
-	// string remains leaked for the remainder of the program
+	// cleaned manually for WebGL, for all invocations
 	c_str.as_ptr() as _
 }
 
-// SAFETY: Webassembly is single-threaded
+// ==================== PROGRAMS & SHADERS ====================
+
 static mut SHADERS: BTreeMap<u32, WebGlShader> = BTreeMap::new();
 
 pub unsafe fn glCreateShader(type_: GLenum) -> GLuint {
@@ -418,21 +467,17 @@ pub unsafe fn glCreateShader(type_: GLenum) -> GLuint {
 	idx
 }
 
-// _lengths is not used as pointers contains null-terminated strings
+// _lengths is not used as pointers contains null-terminated strings, also _lengths is NULL
 pub unsafe fn glShaderSource(shader_idx: GLuint, count: GLsizei, pointers: *const *const GLchar, _lengths: *const GLint) {
-	if shader_idx == 0 || !SHADERS.contains_key(&shader_idx) {
-		let msg = format!("glShaderSource failed! Invalid shader id: {}", shader_idx);
-		throw_str(&msg);
-	}
+	debug_assert!(SHADERS.contains_key(&shader_idx));
 
 	// get source
-	let mut source = String::new();
-
-	for i in 0..count {
+	let source = (0..count).into_iter().fold(String::new(), |mut acc, i| {
 		let ptr = *pointers.offset(i as isize);
 		let slice = std::ffi::CStr::from_ptr(ptr).to_str().unwrap();
-		source.push_str(slice);
-	}
+		acc.push_str(slice);
+		acc
+	});
 
 	// get shader
 	let gl = get_gl();
@@ -441,10 +486,7 @@ pub unsafe fn glShaderSource(shader_idx: GLuint, count: GLsizei, pointers: *cons
 }
 
 pub unsafe fn glCompileShader(shader_idx: GLuint) {
-	if shader_idx == 0 || !SHADERS.contains_key(&shader_idx) {
-		let msg = format!("glCompileShader failed! Invalid shader id: {}", shader_idx);
-		throw_str(&msg);
-	}
+	debug_assert!(SHADERS.contains_key(&shader_idx));
 
 	let gl = get_gl();
 	let shader = SHADERS.get(&shader_idx).unwrap_throw();
@@ -455,10 +497,7 @@ pub unsafe fn glCompileShader(shader_idx: GLuint) {
 static mut SHADER_LOGS: BTreeMap<u32, String> = BTreeMap::new();
 
 pub unsafe fn glGetShaderiv(shader_idx: GLuint, pname: GLenum, params: *mut GLint) {
-	if shader_idx == 0 || !SHADERS.contains_key(&shader_idx) {
-		let msg = format!("glGetShaderiv failed! Invalid shader id: {}", shader_idx);
-		throw_str(&msg);
-	}
+	debug_assert!(SHADERS.contains_key(&shader_idx));
 
 	let gl = get_gl();
 	let shader = SHADERS.get(&shader_idx).unwrap_throw();
@@ -490,10 +529,7 @@ pub unsafe fn glGetShaderiv(shader_idx: GLuint, pname: GLenum, params: *mut GLin
 }
 
 pub unsafe fn glGetShaderInfoLog(shader_idx: GLuint, bufSize: GLsizei, length: *mut GLsizei, infoLog: *mut GLchar) {
-	if shader_idx == 0 || !SHADERS.contains_key(&shader_idx) {
-		let msg = format!("glGetShaderInfoLog failed! Invalid shader id: {}", shader_idx);
-		throw_str(&msg);
-	}
+	debug_assert!(SHADERS.contains_key(&shader_idx));
 
 	// attempt to get cached log
 	let mut extracted_log = None;
@@ -514,7 +550,6 @@ pub unsafe fn glGetShaderInfoLog(shader_idx: GLuint, bufSize: GLsizei, length: *
 	*length = len;
 }
 
-// SAFETY: Webassembly is single-threaded
 static mut PROGRAMS: BTreeMap<u32, WebGlProgram> = BTreeMap::new();
 
 pub unsafe fn glCreateProgram() -> GLuint {
@@ -528,15 +563,8 @@ pub unsafe fn glCreateProgram() -> GLuint {
 }
 
 pub unsafe fn glAttachShader(program_idx: GLuint, shader_idx: GLuint) {
-	if program_idx == 0 || !PROGRAMS.contains_key(&program_idx) {
-		let msg = format!("glAttachShader failed! Invalid program id: {}", program_idx);
-		throw_str(&msg);
-	}
-
-	if shader_idx == 0 || !SHADERS.contains_key(&shader_idx) {
-		let msg = format!("glAttachShader failed! Invalid shader id: {}", shader_idx);
-		throw_str(&msg);
-	}
+	debug_assert!(SHADERS.contains_key(&shader_idx));
+	debug_assert!(PROGRAMS.contains_key(&program_idx));
 
 	let gl = get_gl();
 	let shader = SHADERS.get(&shader_idx).unwrap_throw();
@@ -551,15 +579,11 @@ struct ProgramInfo {
 	max_uniform_length: u32,
 }
 
-// SAFETY: Webassembly is single-threaded
 static mut UNIFORMS: BTreeMap<u32, WebGlUniformLocation> = BTreeMap::new();
 static mut PROGRAM_INFOS: BTreeMap<u32, ProgramInfo> = BTreeMap::new();
 
 pub unsafe fn glLinkProgram(program_idx: GLuint) {
-	if program_idx == 0 || !PROGRAMS.contains_key(&program_idx) {
-		let msg = format!("glLinkProgram failed! Invalid program id: {}", program_idx);
-		throw_str(&msg);
-	}
+	debug_assert!(PROGRAMS.contains_key(&program_idx));
 
 	let gl = get_gl();
 	let program = PROGRAMS.get(&program_idx).unwrap_throw();
@@ -611,10 +635,7 @@ pub unsafe fn glLinkProgram(program_idx: GLuint) {
 static mut PROGRAM_LOGS: BTreeMap<u32, String> = BTreeMap::new();
 
 pub unsafe fn glGetProgramiv(program_idx: GLuint, pname: GLenum, params: *mut GLint) {
-	if program_idx == 0 || !PROGRAMS.contains_key(&program_idx) || program_idx > counter::get() {
-		let msg = format!("glGetProgramiv failed! Invalid program id: {}", program_idx);
-		throw_str(&msg);
-	}
+	debug_assert!(PROGRAMS.contains_key(&program_idx));
 
 	let gl = get_gl();
 	let program = PROGRAMS.get(&program_idx).unwrap_throw();
@@ -637,16 +658,13 @@ pub unsafe fn glGetProgramiv(program_idx: GLuint, pname: GLenum, params: *mut GL
 	}
 }
 
-pub unsafe fn glGetProgramInfoLog(program: GLuint, bufSize: GLsizei, length: *mut GLsizei, infoLog: *mut GLchar) {
-	if program == 0 || !PROGRAMS.contains_key(&program) || program > counter::get() {
-		let msg = format!("glGetProgramInfoLog failed! Invalid program id: {}", program);
-		throw_str(&msg);
-	}
+pub unsafe fn glGetProgramInfoLog(program_idx: GLuint, bufSize: GLsizei, length: *mut GLsizei, infoLog: *mut GLchar) {
+	debug_assert!(PROGRAMS.contains_key(&program_idx));
 
 	// attempt to get cached log
 	let mut extracted_log = None;
-	let log = PROGRAM_LOGS.get(&program).unwrap_or_else(|| {
-		let program = PROGRAMS.get(&program).unwrap_throw();
+	let log = PROGRAM_LOGS.get(&program_idx).unwrap_or_else(|| {
+		let program = PROGRAMS.get(&program_idx).unwrap_throw();
 		extracted_log.get_or_insert_with(|| get_gl().get_program_info_log(program).unwrap_throw())
 	});
 
@@ -662,15 +680,10 @@ pub unsafe fn glGetProgramInfoLog(program: GLuint, bufSize: GLsizei, length: *mu
 	*length = len;
 }
 
-pub unsafe fn glUseProgram(program: GLuint) {
-	if program == 0 || !PROGRAMS.contains_key(&program) {
-		let msg = format!("glUseProgram failed! Invalid program id: {}", program);
-		throw_str(&msg);
-	}
-
+pub unsafe fn glUseProgram(program_idx: GLuint) {
+	debug_assert!(PROGRAMS.contains_key(&program_idx));
 	let gl = get_gl();
-	let program = PROGRAMS.get(&program).unwrap_throw();
-	gl.use_program(Some(program));
+	gl.use_program(PROGRAMS.get(&program_idx));
 }
 
 pub unsafe fn glGetUniformLocation(program: GLuint, name: *const GLchar) -> GLint {
@@ -689,7 +702,7 @@ pub unsafe fn glGetUniformLocation(program: GLuint, name: *const GLchar) -> GLin
 	}
 
 	// get uniform location
-	let program_info = PROGRAM_INFOS.get(&program).unwrap_throw();
+	let Some(program_info) = PROGRAM_INFOS.get(&program) else { return -1 };
 	if let Some((info, uniform_idx)) = program_info.uniforms.get(name) {
 		if array_index.is_some() && array_index.map(|a| a < info.size() as _).unwrap_or(false) {
 			return *uniform_idx as GLint + array_index.unwrap_or(0) as GLint;
@@ -699,18 +712,178 @@ pub unsafe fn glGetUniformLocation(program: GLuint, name: *const GLchar) -> GLin
 	-1 // Unable to find uniform
 }
 
+// ==================== TEXTURES ====================
+
+static mut TEXTURES: BTreeMap<u32, WebGlTexture> = BTreeMap::new();
+
+fn texture_size(internalformat: GLint, width: GLsizei, height: GLsizei) -> GLsizei {
+	match internalformat as u32 {
+		GL_ALPHA => width * height,
+		GL_RGB => width * height * 3,
+		GL_RGBA => width * height * 4,
+		// TextureFormat::RGB565 | TextureFormat::RGBA4 | TextureFormat::RGBA5551
+		_ => width * height * 3,
+	}
+}
+
+pub unsafe fn glGenTextures(n: GLsizei, textures: *mut GLuint) {
+	let n = n as usize;
+	let textures = slice::from_raw_parts_mut(textures, n);
+
+	for i in 0..n {
+		let gl = get_gl();
+		if let Some(texture) = gl.create_texture() {
+			let id = counter::increment();
+			TEXTURES.insert(id, texture);
+			textures[i] = id;
+		}
+	}
+}
+
+#[inline(always)]
+pub fn glActiveTexture(texture: GLenum) {
+	get_gl().active_texture(texture);
+}
+
+pub unsafe fn glBindTexture(target: GLenum, texture: GLuint) {
+	debug_assert!(TEXTURES.contains_key(&texture));
+	let texture = TEXTURES.get(&texture);
+	get_gl().bind_texture(target, texture);
+}
+
+#[inline(always)]
+pub fn glPixelStorei(pname: GLenum, param: GLint) {
+	get_gl().pixel_storei(pname, param);
+}
+
+pub unsafe fn glReadPixels(x: GLint, y: GLint, width: GLsizei, height: GLsizei, format: GLenum, type_: GLenum, pixels: *mut ::std::os::raw::c_void) {
+	let size = texture_size(format as _, width, height) as _;
+	let pixels = (pixels as *mut u8).as_mut().map(|p| slice::from_raw_parts_mut(p, size));
+	debug_assert!(pixels.as_ref().map(|p| p.len() >= size).unwrap_or(true));
+
+	get_gl().read_pixels_with_opt_u8_array(x, y, width, height, format, type_, pixels).unwrap_throw();
+}
+
+#[inline(always)]
+pub fn glTexParameteri(target: GLenum, pname: GLenum, param: GLint) {
+	get_gl().tex_parameteri(target, pname, param);
+}
+
+#[inline(never)]
+pub unsafe fn glTexImage2D(target: GLenum, level: GLint, internalformat: GLint, width: GLsizei, height: GLsizei, border: GLint, format: GLenum, type_: GLenum, pixels: *const ::std::os::raw::c_void) {
+	let length = texture_size(internalformat, width, height) as usize;
+	let pixels = (pixels as *const u8).as_ref().map(|p| slice::from_raw_parts(p, length));
+	get_gl()
+		.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(target, level, internalformat, width, height, border, format, type_, pixels)
+		.unwrap_throw();
+}
+
+#[inline(never)]
+pub unsafe fn glTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, type_: GLenum, pixels: *const ::std::os::raw::c_void) {
+	let length = texture_size(format as _, width, height) as usize;
+	let pixels = (pixels as *const u8).as_ref().map(|p| slice::from_raw_parts(p, length));
+	get_gl()
+		.tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array(target, level, xoffset, yoffset, width, height, format, type_, pixels)
+		.unwrap_throw();
+}
+
+pub unsafe fn glDeleteTextures(n: GLsizei, textures: *const GLuint) {
+	let n = n as usize;
+	let textures = slice::from_raw_parts(textures, n);
+
+	for t in textures {
+		let texture = TEXTURES.get(t);
+		get_gl().delete_texture(texture);
+	}
+}
+
+pub fn glGenerateMipmap(target: GLenum) {
+	get_gl().generate_mipmap(target);
+}
+
+// ==================== BLENDING ====================
+
+#[inline(always)]
+pub fn glEnable(cap: GLenum) {
+	get_gl().enable(cap)
+}
+
+#[inline(always)]
+pub fn glBlendFuncSeparate(sfactorRGB: GLenum, dfactorRGB: GLenum, sfactorAlpha: GLenum, dfactorAlpha: GLenum) {
+	get_gl().blend_func_separate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha)
+}
+
+#[inline(always)]
+pub fn glBlendEquationSeparate(mode_rgb: GLenum, mode_alpha: GLenum) {
+	get_gl().blend_equation_separate(mode_rgb, mode_alpha)
+}
+
+#[inline(always)]
+pub fn glBlendFunc(sfactor: GLenum, dfactor: GLenum) {
+	get_gl().blend_func(sfactor, dfactor)
+}
+
+#[inline(always)]
+pub fn glDisable(cap: GLenum) {
+	get_gl().disable(cap)
+}
+
+#[inline(always)]
+pub fn glBlendColor(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat) {
+	get_gl().blend_color(red, green, blue, alpha)
+}
+
+#[inline(always)]
+pub fn glBlendEquation(mode: GLenum) {
+	get_gl().blend_equation(mode)
+}
+
+// ==================== STENCILS ====================
+
+#[inline(always)]
+pub fn glStencilFunc(func: GLenum, ref_: GLint, mask: GLuint) {
+	get_gl().stencil_func(func, ref_, mask)
+}
+
+#[inline(always)]
+pub fn glStencilFuncSeparate(face: GLenum, func: GLenum, ref_: GLint, mask: GLuint) {
+	get_gl().stencil_func_separate(face, func, ref_, mask)
+}
+
+#[inline(always)]
+pub fn glStencilMask(mask: GLuint) {
+	get_gl().stencil_mask(mask)
+}
+
+#[inline(always)]
+pub fn glStencilMaskSeparate(face: GLenum, mask: GLuint) {
+	get_gl().stencil_mask_separate(face, mask)
+}
+
+#[inline(always)]
+pub fn glStencilOp(fail: GLenum, zfail: GLenum, zpass: GLenum) {
+	get_gl().stencil_op(fail, zfail, zpass)
+}
+
+#[inline(always)]
+pub fn glStencilOpSeparate(face: GLenum, sfail: GLenum, dpfail: GLenum, dppass: GLenum) {
+	get_gl().stencil_op_separate(face, sfail, dpfail, dppass)
+}
+
+// ==================== CULLING ====================
+
+pub fn glCullFace(mode: GLenum) {
+	get_gl().cull_face(mode)
+}
+
+pub fn glColorMask(red: GLboolean, green: GLboolean, blue: GLboolean, alpha: GLboolean) {
+	get_gl().color_mask(red != 0, green != 0, blue != 0, alpha != 0)
+}
+
 extern "C" {
-	pub fn glActiveTexture(texture: GLenum);
 	pub fn glBindAttribLocation(program: GLuint, index: GLuint, name: *const GLchar);
 	pub fn glBindBuffer(target: GLenum, buffer: GLuint);
-	pub fn glBindFramebuffer(target: GLenum, framebuffer: GLuint);
 	pub fn glBindRenderbuffer(target: GLenum, renderbuffer: GLuint);
-	pub fn glBindTexture(target: GLenum, texture: GLuint);
-	pub fn glBlendColor(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat);
-	pub fn glBlendEquation(mode: GLenum);
-	pub fn glBlendEquationSeparate(modeRGB: GLenum, modeAlpha: GLenum);
-	pub fn glBlendFunc(sfactor: GLenum, dfactor: GLenum);
-	pub fn glBlendFuncSeparate(sfactorRGB: GLenum, dfactorRGB: GLenum, sfactorAlpha: GLenum, dfactorAlpha: GLenum);
 	pub fn glBufferData(target: GLenum, size: GLsizeiptr, data: *const ::std::os::raw::c_void, usage: GLenum);
 	pub fn glBufferSubData(target: GLenum, offset: GLintptr, size: GLsizeiptr, data: *const ::std::os::raw::c_void);
 	pub fn glCheckFramebufferStatus(target: GLenum) -> GLenum;
@@ -718,37 +891,28 @@ extern "C" {
 	pub fn glClearColor(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat);
 	pub fn glClearDepthf(d: GLfloat);
 	pub fn glClearStencil(s: GLint);
-	pub fn glColorMask(red: GLboolean, green: GLboolean, blue: GLboolean, alpha: GLboolean);
 	pub fn glCompressedTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, width: GLsizei, height: GLsizei, border: GLint, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
 	pub fn glCompressedTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
 	pub fn glCopyTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, x: GLint, y: GLint, width: GLsizei, height: GLsizei, border: GLint);
 	pub fn glCopyTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, x: GLint, y: GLint, width: GLsizei, height: GLsizei);
-	pub fn glCullFace(mode: GLenum);
 	pub fn glDeleteBuffers(n: GLsizei, buffers: *const GLuint);
-	pub fn glDeleteFramebuffers(n: GLsizei, framebuffers: *const GLuint);
 	pub fn glDeleteProgram(program: GLuint);
 	pub fn glDeleteRenderbuffers(n: GLsizei, renderbuffers: *const GLuint);
 	pub fn glDeleteShader(shader: GLuint);
-	pub fn glDeleteTextures(n: GLsizei, textures: *const GLuint);
 	pub fn glDepthFunc(func: GLenum);
 	pub fn glDepthMask(flag: GLboolean);
 	pub fn glDepthRangef(n: GLfloat, f: GLfloat);
 	pub fn glDetachShader(program: GLuint, shader: GLuint);
-	pub fn glDisable(cap: GLenum);
 	pub fn glDisableVertexAttribArray(index: GLuint);
 	pub fn glDrawArrays(mode: GLenum, first: GLint, count: GLsizei);
 	pub fn glDrawElements(mode: GLenum, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void);
-	pub fn glEnable(cap: GLenum);
 	pub fn glEnableVertexAttribArray(index: GLuint);
 	pub fn glFinish();
 	pub fn glFlush();
 	pub fn glFramebufferRenderbuffer(target: GLenum, attachment: GLenum, renderbuffertarget: GLenum, renderbuffer: GLuint);
-	pub fn glFramebufferTexture2D(target: GLenum, attachment: GLenum, textarget: GLenum, texture: GLuint, level: GLint);
 	pub fn glFrontFace(mode: GLenum);
 	pub fn glGenBuffers(n: GLsizei, buffers: *mut GLuint);
-	pub fn glGenerateMipmap(target: GLenum);
 	pub fn glGenRenderbuffers(n: GLsizei, renderbuffers: *mut GLuint);
-	pub fn glGenTextures(n: GLsizei, textures: *mut GLuint);
 	pub fn glGetActiveAttrib(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLint, type_: *mut GLenum, name: *mut GLchar);
 	pub fn glGetActiveUniform(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLint, type_: *mut GLenum, name: *mut GLchar);
 	pub fn glGetAttachedShaders(program: GLuint, maxCount: GLsizei, count: *mut GLsizei, shaders: *mut GLuint);
@@ -777,26 +941,16 @@ extern "C" {
 	pub fn glIsShader(shader: GLuint) -> GLboolean;
 	pub fn glIsTexture(texture: GLuint) -> GLboolean;
 	pub fn glLineWidth(width: GLfloat);
-	pub fn glPixelStorei(pname: GLenum, param: GLint);
 	pub fn glPolygonOffset(factor: GLfloat, units: GLfloat);
-	pub fn glReadPixels(x: GLint, y: GLint, width: GLsizei, height: GLsizei, format: GLenum, type_: GLenum, pixels: *mut ::std::os::raw::c_void);
 	pub fn glReleaseShaderCompiler();
 	pub fn glRenderbufferStorage(target: GLenum, internalformat: GLenum, width: GLsizei, height: GLsizei);
 	pub fn glSampleCoverage(value: GLfloat, invert: GLboolean);
 	pub fn glScissor(x: GLint, y: GLint, width: GLsizei, height: GLsizei);
 	pub fn glShaderBinary(count: GLsizei, shaders: *const GLuint, binaryformat: GLenum, binary: *const ::std::os::raw::c_void, length: GLsizei);
-	pub fn glStencilFunc(func: GLenum, ref_: GLint, mask: GLuint);
-	pub fn glStencilFuncSeparate(face: GLenum, func: GLenum, ref_: GLint, mask: GLuint);
-	pub fn glStencilMask(mask: GLuint);
-	pub fn glStencilMaskSeparate(face: GLenum, mask: GLuint);
-	pub fn glStencilOp(fail: GLenum, zfail: GLenum, zpass: GLenum);
-	pub fn glStencilOpSeparate(face: GLenum, sfail: GLenum, dpfail: GLenum, dppass: GLenum);
-	pub fn glTexImage2D(target: GLenum, level: GLint, internalformat: GLint, width: GLsizei, height: GLsizei, border: GLint, format: GLenum, type_: GLenum, pixels: *const ::std::os::raw::c_void);
+
 	pub fn glTexParameterf(target: GLenum, pname: GLenum, param: GLfloat);
 	pub fn glTexParameterfv(target: GLenum, pname: GLenum, params: *const GLfloat);
-	pub fn glTexParameteri(target: GLenum, pname: GLenum, param: GLint);
 	pub fn glTexParameteriv(target: GLenum, pname: GLenum, params: *const GLint);
-	pub fn glTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, type_: GLenum, pixels: *const ::std::os::raw::c_void);
 	pub fn glUniform1f(location: GLint, v0: GLfloat);
 	pub fn glUniform1fv(location: GLint, count: GLsizei, value: *const GLfloat);
 	pub fn glUniform1i(location: GLint, v0: GLint);
@@ -880,7 +1034,6 @@ extern "C" {
 	pub fn glGetQueryObjectui64v(id: GLuint, pname: GLenum, params: *mut GLuint64);
 	pub fn glUnmapBuffer(target: GLenum) -> GLboolean;
 	pub fn glGetBufferPointerv(target: GLenum, pname: GLenum, params: *mut *mut ::std::os::raw::c_void);
-	pub fn glDrawBuffers(n: GLsizei, bufs: *const GLenum);
 	pub fn glUniformMatrix2x3fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
 	pub fn glUniformMatrix3x2fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
 	pub fn glUniformMatrix2x4fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);

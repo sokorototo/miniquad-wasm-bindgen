@@ -151,7 +151,8 @@ impl Texture {
 			ctx.cache.bind_texture(0, params.kind.into(), texture);
 			glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // miniquad_wasm_bindgen always uses row alignment of 1
 
-			if cfg!(not(target_arch = "wasm32")) {
+			#[cfg(not(target_arch = "wasm32"))]
+			{
 				// if not WASM
 				if params.format == TextureFormat::Alpha {
 					// if alpha miniquad_wasm_bindgen texture, the value on non-WASM is stored in red channel
@@ -166,7 +167,7 @@ impl Texture {
 			match source {
 				TextureSource::Empty => {
 					// not quite sure if glTexImage2D(null) is really a requirement
-					// but it was like this for quite a while and apparantly it works?
+					// but it was like this for quite a while and apparently it works?
 					glTexImage2D(
 						GL_TEXTURE_2D,
 						0,
@@ -180,7 +181,7 @@ impl Texture {
 					);
 				}
 				TextureSource::Bytes(source) => {
-					assert!(
+					debug_assert!(
 						params.kind == TextureKind::Texture2D,
 						"incompatible TextureKind and TextureSource. Cubemaps require TextureSource::Array of 6 textures."
 					);
@@ -197,9 +198,11 @@ impl Texture {
 					);
 				}
 				TextureSource::Array(array) => {
+					#[cfg(debug_assertions)]
 					if params.kind == TextureKind::CubeMap {
 						assert!(array.len() == 6, "Cubemaps require TextureSource::Array of 6 textures.");
 					}
+
 					for (cubemap_face, mipmaps) in array.iter().enumerate() {
 						if mipmaps.len() != 1 {
 							glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
@@ -232,7 +235,7 @@ impl Texture {
 				TextureWrap::Clamp => GL_CLAMP_TO_EDGE,
 			};
 
-			let min_filter = Self::gl_filter(params.min_filter, params.mipmap_filter);
+			let min_filter = Texture::gl_filter(params.min_filter, params.mipmap_filter);
 			let mag_filter = match params.mag_filter {
 				FilterMode::Nearest => GL_NEAREST,
 				FilterMode::Linear => GL_LINEAR,
@@ -243,8 +246,8 @@ impl Texture {
 			glTexParameteri(params.kind.into(), GL_TEXTURE_MIN_FILTER, min_filter as i32);
 			glTexParameteri(params.kind.into(), GL_TEXTURE_MAG_FILTER, mag_filter as i32);
 		}
-		ctx.cache.restore_texture_binding(0);
 
+		ctx.cache.restore_texture_binding(0);
 		Texture { raw: texture, params }
 	}
 
@@ -319,6 +322,7 @@ impl Texture {
 		let (_, format, pixel_type) = self.params.format.into();
 
 		let mut fbo = 0;
+
 		unsafe {
 			let mut bound_fbo: i32 = 0;
 			glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &mut bound_fbo);
@@ -543,6 +547,7 @@ pub unsafe fn load_shader(shader_type: GLenum, source: &str) -> Result<GLuint, S
 	Ok(shader)
 }
 
+#[allow(unused_unsafe)]
 impl GlContext {
 	fn set_blend(&mut self, color_blend: Option<BlendState>, alpha_blend: Option<BlendState>) {
 		if color_blend.is_none() && alpha_blend.is_some() {
@@ -589,6 +594,7 @@ impl GlContext {
 		if self.cache.stencil == stencil_test {
 			return;
 		}
+
 		unsafe {
 			if let Some(stencil) = stencil_test {
 				if self.cache.stencil.is_none() {
@@ -751,6 +757,7 @@ impl RenderingBackend for GlContext {
 		}
 		self.cache.restore_texture_binding(0);
 	}
+
 	fn texture_set_mag_filter(&mut self, texture: TextureId, filter: FilterMode) {
 		let t = self.textures.get(texture);
 		self.cache.store_texture_binding(0);
@@ -765,6 +772,7 @@ impl RenderingBackend for GlContext {
 		}
 		self.cache.restore_texture_binding(0);
 	}
+
 	fn texture_resize(&mut self, texture: TextureId, width: u32, height: u32, source: Option<&[u8]>) {
 		let mut t = self.textures.get(texture);
 		t.resize(self, width, height, source);
@@ -775,10 +783,12 @@ impl RenderingBackend for GlContext {
 			_ => {}
 		};
 	}
+
 	fn texture_read_pixels(&mut self, texture: TextureId, source: &mut [u8]) {
 		let t = self.textures.get(texture);
 		t.read_pixels(source);
 	}
+
 	fn texture_generate_mipmaps(&mut self, texture: TextureId) {
 		let t = self.textures.get(texture);
 		self.cache.store_texture_binding(0);
@@ -788,14 +798,17 @@ impl RenderingBackend for GlContext {
 		}
 		self.cache.restore_texture_binding(0);
 	}
+
 	fn texture_update_part(&mut self, texture: TextureId, x_offset: i32, y_offset: i32, width: i32, height: i32, source: &[u8]) {
 		let t = self.textures.get(texture);
 		t.update_texture_part(self, x_offset, y_offset, width, height, source);
 	}
+
 	fn texture_params(&self, texture: TextureId) -> TextureParams {
 		let texture = self.textures.get(texture);
 		texture.params
 	}
+
 	unsafe fn texture_raw_id(&self, texture: TextureId) -> RawId {
 		let texture = self.textures.get(texture);
 		RawId::OpenGl(texture.raw)
@@ -808,7 +821,7 @@ impl RenderingBackend for GlContext {
 		let mut gl_fb = 0;
 
 		unsafe {
-			glGenFramebuffers(1, &mut gl_fb as *mut _);
+			glGenFramebuffers(1, &mut gl_fb);
 			glBindFramebuffer(GL_FRAMEBUFFER, gl_fb);
 			for (i, color_img) in color_img.iter().enumerate() {
 				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i as u32, GL_TEXTURE_2D, self.textures.get(*color_img).raw, 0);
@@ -826,6 +839,7 @@ impl RenderingBackend for GlContext {
 
 			glBindFramebuffer(GL_FRAMEBUFFER, self.default_framebuffer);
 		}
+
 		let pass = RenderPassInternal {
 			gl_fb,
 			color_textures: color_img.to_vec(),

@@ -228,12 +228,12 @@ var GL = {
 
 function _glGenObject(n, buffers, createFunction, objectTable, _functionName) {
     for (var i = 0; i < n; i++) {
-        var buffer = gl[createFunction]();
-        var id = buffer ? GL.getNewId(objectTable) : buffer;
+        var object = gl[createFunction]();
+        var id = object ? GL.getNewId(objectTable) : object;
 
-        if (buffer) {
-            buffer.name = id;
-            objectTable[id] = buffer;
+        if (object) {
+            object.name = id;
+            objectTable[id] = object;
         } else {
             console.error("GL_INVALID_OPERATION");
             GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
@@ -436,21 +436,6 @@ var importObject = {
             _glGenObject(n, arrays, 'createVertexArray', GL.vaos, 'glGenVertexArrays');
         },
         glGenFramebuffers: function (n, ids) {
-            for (var i = 0; i < n; i++) {
-                var buffer = gl['createFramebuffer']();
-                var id = buffer && GL.getNewId(objectTable);
-                if (buffer) {
-                    buffer.name = id;
-                    objectTable[id] = buffer;
-                } else {
-                    console.error("GL_INVALID_OPERATION");
-                    GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
-
-                    alert('GL_INVALID_OPERATION in ' + _functionName + ': GLctx.' + 'createFramebuffer' + ' returned null - most likely GL context is lost!');
-                }
-
-                getArray(buffers + i * 4, Int32Array, 1)[0] = id;
-            }
             _glGenObject(n, ids, 'createFramebuffer', GL.framebuffers, 'glGenFramebuffers');
         },
         glBindVertexArray: function (vao) {
@@ -458,7 +443,6 @@ var importObject = {
         },
         glBindFramebuffer: function (target, framebuffer) {
             GL.validateGLObjectID(GL.framebuffers, framebuffer, 'glBindFramebuffer', 'framebuffer');
-
             gl.bindFramebuffer(target, GL.framebuffers[framebuffer]);
         },
 
