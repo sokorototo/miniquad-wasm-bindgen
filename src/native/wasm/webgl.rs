@@ -612,6 +612,11 @@ pub unsafe fn glGetUniformLocation(program: GLuint, name: *const GLchar) -> GLin
 }
 
 // TODO: Verify uniform code
+pub unsafe fn glUniform1i(location: GLint, v0: GLint) {
+	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
+	get_gl().uniform1i(UNIFORMS.get(&(location as u32)), v0)
+}
+
 pub unsafe fn glUniform1iv(location: GLint, count: GLsizei, value: *const GLint) {
 	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
 
@@ -1114,212 +1119,211 @@ pub fn glClearStencil(s: GLint) {
 	get_gl().clear_stencil(s)
 }
 
-extern "C" {
-	pub fn glBindAttribLocation(program: GLuint, index: GLuint, name: *const GLchar);
-	pub fn glBindRenderbuffer(target: GLenum, renderbuffer: GLuint);
-	pub fn glCheckFramebufferStatus(target: GLenum) -> GLenum;
-	pub fn glCompressedTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, width: GLsizei, height: GLsizei, border: GLint, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
-	pub fn glCompressedTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
-	pub fn glCopyTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, x: GLint, y: GLint, width: GLsizei, height: GLsizei, border: GLint);
-	pub fn glCopyTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, x: GLint, y: GLint, width: GLsizei, height: GLsizei);
-	pub fn glDeleteProgram(program: GLuint);
-	pub fn glDeleteRenderbuffers(n: GLsizei, renderbuffers: *const GLuint);
-	pub fn glDeleteShader(shader: GLuint);
-	pub fn glDepthMask(flag: GLboolean);
-	pub fn glDepthRangef(n: GLfloat, f: GLfloat);
-	pub fn glDetachShader(program: GLuint, shader: GLuint);
-	pub fn glDrawArrays(mode: GLenum, first: GLint, count: GLsizei);
-	pub fn glDrawElements(mode: GLenum, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void);
-	pub fn glFinish();
-	pub fn glFlush();
-	pub fn glFramebufferRenderbuffer(target: GLenum, attachment: GLenum, renderbuffertarget: GLenum, renderbuffer: GLuint);
-	pub fn glGenRenderbuffers(n: GLsizei, renderbuffers: *mut GLuint);
-	pub fn glGetActiveAttrib(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLint, type_: *mut GLenum, name: *mut GLchar);
-	pub fn glGetActiveUniform(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLint, type_: *mut GLenum, name: *mut GLchar);
-	pub fn glGetAttachedShaders(program: GLuint, maxCount: GLsizei, count: *mut GLsizei, shaders: *mut GLuint);
-	pub fn glGetBooleanv(pname: GLenum, data: *mut GLboolean);
-	pub fn glGetBufferParameteriv(target: GLenum, pname: GLenum, params: *mut GLint);
-	pub fn glGetError() -> GLenum;
-	pub fn glGetFloatv(pname: GLenum, data: *mut GLfloat);
-	pub fn glGetFramebufferAttachmentParameteriv(target: GLenum, attachment: GLenum, pname: GLenum, params: *mut GLint);
-	pub fn glGetRenderbufferParameteriv(target: GLenum, pname: GLenum, params: *mut GLint);
-	pub fn glGetShaderPrecisionFormat(shadertype: GLenum, precisiontype: GLenum, range: *mut GLint, precision: *mut GLint);
-	pub fn glGetShaderSource(shader: GLuint, bufSize: GLsizei, length: *mut GLsizei, source: *mut GLchar);
-	pub fn glGetTexParameterfv(target: GLenum, pname: GLenum, params: *mut GLfloat);
-	pub fn glGetTexParameteriv(target: GLenum, pname: GLenum, params: *mut GLint);
-	pub fn glGetUniformfv(program: GLuint, location: GLint, params: *mut GLfloat);
-	pub fn glGetUniformiv(program: GLuint, location: GLint, params: *mut GLint);
-	pub fn glGetVertexAttribfv(index: GLuint, pname: GLenum, params: *mut GLfloat);
-	pub fn glGetVertexAttribiv(index: GLuint, pname: GLenum, params: *mut GLint);
-	pub fn glGetVertexAttribPointerv(index: GLuint, pname: GLenum, pointer: *mut *mut ::std::os::raw::c_void);
-	pub fn glHint(target: GLenum, mode: GLenum);
-	pub fn glIsBuffer(buffer: GLuint) -> GLboolean;
-	pub fn glIsEnabled(cap: GLenum) -> GLboolean;
-	pub fn glIsFramebuffer(framebuffer: GLuint) -> GLboolean;
-	pub fn glIsProgram(program: GLuint) -> GLboolean;
-	pub fn glIsRenderbuffer(renderbuffer: GLuint) -> GLboolean;
-	pub fn glIsShader(shader: GLuint) -> GLboolean;
-	pub fn glIsTexture(texture: GLuint) -> GLboolean;
-	pub fn glLineWidth(width: GLfloat);
-	pub fn glPolygonOffset(factor: GLfloat, units: GLfloat);
-	pub fn glReleaseShaderCompiler();
-	pub fn glRenderbufferStorage(target: GLenum, internalformat: GLenum, width: GLsizei, height: GLsizei);
-	pub fn glSampleCoverage(value: GLfloat, invert: GLboolean);
-	pub fn glShaderBinary(count: GLsizei, shaders: *const GLuint, binaryformat: GLenum, binary: *const ::std::os::raw::c_void, length: GLsizei);
+// extern "C" {
+// 	pub fn glBindAttribLocation(program: GLuint, index: GLuint, name: *const GLchar);
+// 	pub fn glBindRenderbuffer(target: GLenum, renderbuffer: GLuint);
+// 	pub fn glCheckFramebufferStatus(target: GLenum) -> GLenum;
+// 	pub fn glCompressedTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, width: GLsizei, height: GLsizei, border: GLint, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
+// 	pub fn glCompressedTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
+// 	pub fn glCopyTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, x: GLint, y: GLint, width: GLsizei, height: GLsizei, border: GLint);
+// 	pub fn glCopyTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, x: GLint, y: GLint, width: GLsizei, height: GLsizei);
+// 	pub fn glDeleteProgram(program: GLuint);
+// 	pub fn glDeleteRenderbuffers(n: GLsizei, renderbuffers: *const GLuint);
+// 	pub fn glDeleteShader(shader: GLuint);
+// 	pub fn glDepthMask(flag: GLboolean);
+// 	pub fn glDepthRangef(n: GLfloat, f: GLfloat);
+// 	pub fn glDetachShader(program: GLuint, shader: GLuint);
+// 	pub fn glDrawArrays(mode: GLenum, first: GLint, count: GLsizei);
+// 	pub fn glDrawElements(mode: GLenum, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void);
+// 	pub fn glFinish();
+// 	pub fn glFlush();
+// 	pub fn glFramebufferRenderbuffer(target: GLenum, attachment: GLenum, renderbuffertarget: GLenum, renderbuffer: GLuint);
+// 	pub fn glGenRenderbuffers(n: GLsizei, renderbuffers: *mut GLuint);
+// 	pub fn glGetActiveAttrib(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLint, type_: *mut GLenum, name: *mut GLchar);
+// 	pub fn glGetActiveUniform(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLint, type_: *mut GLenum, name: *mut GLchar);
+// 	pub fn glGetAttachedShaders(program: GLuint, maxCount: GLsizei, count: *mut GLsizei, shaders: *mut GLuint);
+// 	pub fn glGetBooleanv(pname: GLenum, data: *mut GLboolean);
+// 	pub fn glGetBufferParameteriv(target: GLenum, pname: GLenum, params: *mut GLint);
+// 	pub fn glGetError() -> GLenum;
+// 	pub fn glGetFloatv(pname: GLenum, data: *mut GLfloat);
+// 	pub fn glGetFramebufferAttachmentParameteriv(target: GLenum, attachment: GLenum, pname: GLenum, params: *mut GLint);
+// 	pub fn glGetRenderbufferParameteriv(target: GLenum, pname: GLenum, params: *mut GLint);
+// 	pub fn glGetShaderPrecisionFormat(shadertype: GLenum, precisiontype: GLenum, range: *mut GLint, precision: *mut GLint);
+// 	pub fn glGetShaderSource(shader: GLuint, bufSize: GLsizei, length: *mut GLsizei, source: *mut GLchar);
+// 	pub fn glGetTexParameterfv(target: GLenum, pname: GLenum, params: *mut GLfloat);
+// 	pub fn glGetTexParameteriv(target: GLenum, pname: GLenum, params: *mut GLint);
+// 	pub fn glGetUniformfv(program: GLuint, location: GLint, params: *mut GLfloat);
+// 	pub fn glGetUniformiv(program: GLuint, location: GLint, params: *mut GLint);
+// 	pub fn glGetVertexAttribfv(index: GLuint, pname: GLenum, params: *mut GLfloat);
+// 	pub fn glGetVertexAttribiv(index: GLuint, pname: GLenum, params: *mut GLint);
+// 	pub fn glGetVertexAttribPointerv(index: GLuint, pname: GLenum, pointer: *mut *mut ::std::os::raw::c_void);
+// 	pub fn glHint(target: GLenum, mode: GLenum);
+// 	pub fn glIsBuffer(buffer: GLuint) -> GLboolean;
+// 	pub fn glIsEnabled(cap: GLenum) -> GLboolean;
+// 	pub fn glIsFramebuffer(framebuffer: GLuint) -> GLboolean;
+// 	pub fn glIsProgram(program: GLuint) -> GLboolean;
+// 	pub fn glIsRenderbuffer(renderbuffer: GLuint) -> GLboolean;
+// 	pub fn glIsShader(shader: GLuint) -> GLboolean;
+// 	pub fn glIsTexture(texture: GLuint) -> GLboolean;
+// 	pub fn glLineWidth(width: GLfloat);
+// 	pub fn glPolygonOffset(factor: GLfloat, units: GLfloat);
+// 	pub fn glReleaseShaderCompiler();
+// 	pub fn glRenderbufferStorage(target: GLenum, internalformat: GLenum, width: GLsizei, height: GLsizei);
+// 	pub fn glSampleCoverage(value: GLfloat, invert: GLboolean);
+// 	pub fn glShaderBinary(count: GLsizei, shaders: *const GLuint, binaryformat: GLenum, binary: *const ::std::os::raw::c_void, length: GLsizei);
 
-	pub fn glTexParameterf(target: GLenum, pname: GLenum, param: GLfloat);
-	pub fn glTexParameterfv(target: GLenum, pname: GLenum, params: *const GLfloat);
-	pub fn glTexParameteriv(target: GLenum, pname: GLenum, params: *const GLint);
-	pub fn glUniform1f(location: GLint, v0: GLfloat);
-	pub fn glUniform1i(location: GLint, v0: GLint);
-	pub fn glUniform2f(location: GLint, v0: GLfloat, v1: GLfloat);
-	pub fn glUniform2i(location: GLint, v0: GLint, v1: GLint);
-	pub fn glUniform3f(location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat);
-	pub fn glUniform3i(location: GLint, v0: GLint, v1: GLint, v2: GLint);
-	pub fn glUniform4f(location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat, v3: GLfloat);
-	pub fn glUniform4i(location: GLint, v0: GLint, v1: GLint, v2: GLint, v3: GLint);
-	pub fn glUniformMatrix2fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
-	pub fn glUniformMatrix3fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
-	pub fn glValidateProgram(program: GLuint);
-	pub fn glVertexAttrib1f(index: GLuint, x: GLfloat);
-	pub fn glVertexAttrib1fv(index: GLuint, v: *const GLfloat);
-	pub fn glVertexAttrib2f(index: GLuint, x: GLfloat, y: GLfloat);
-	pub fn glVertexAttrib2fv(index: GLuint, v: *const GLfloat);
-	pub fn glVertexAttrib3f(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat);
-	pub fn glVertexAttrib3fv(index: GLuint, v: *const GLfloat);
-	pub fn glVertexAttrib4f(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat);
-	pub fn glVertexAttrib4fv(index: GLuint, v: *const GLfloat);
-	pub fn glReadBuffer(src: GLenum);
-	pub fn glDrawRangeElements(mode: GLenum, start: GLuint, end: GLuint, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void);
-	pub fn glTexImage3D(
-		target: GLenum,
-		level: GLint,
-		internalformat: GLint,
-		width: GLsizei,
-		height: GLsizei,
-		depth: GLsizei,
-		border: GLint,
-		format: GLenum,
-		type_: GLenum,
-		pixels: *const ::std::os::raw::c_void,
-	);
-	pub fn glTexSubImage3D(
-		target: GLenum,
-		level: GLint,
-		xoffset: GLint,
-		yoffset: GLint,
-		zoffset: GLint,
-		width: GLsizei,
-		height: GLsizei,
-		depth: GLsizei,
-		format: GLenum,
-		type_: GLenum,
-		pixels: *const ::std::os::raw::c_void,
-	);
-	pub fn glCopyTexSubImage3D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, zoffset: GLint, x: GLint, y: GLint, width: GLsizei, height: GLsizei);
-	pub fn glCompressedTexImage3D(target: GLenum, level: GLint, internalformat: GLenum, width: GLsizei, height: GLsizei, depth: GLsizei, border: GLint, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
-	pub fn glCompressedTexSubImage3D(
-		target: GLenum,
-		level: GLint,
-		xoffset: GLint,
-		yoffset: GLint,
-		zoffset: GLint,
-		width: GLsizei,
-		height: GLsizei,
-		depth: GLsizei,
-		format: GLenum,
-		imageSize: GLsizei,
-		data: *const ::std::os::raw::c_void,
-	);
+// 	pub fn glTexParameterf(target: GLenum, pname: GLenum, param: GLfloat);
+// 	pub fn glTexParameterfv(target: GLenum, pname: GLenum, params: *const GLfloat);
+// 	pub fn glTexParameteriv(target: GLenum, pname: GLenum, params: *const GLint);
+// 	pub fn glUniform1f(location: GLint, v0: GLfloat);
+// 	pub fn glUniform2f(location: GLint, v0: GLfloat, v1: GLfloat);
+// 	pub fn glUniform2i(location: GLint, v0: GLint, v1: GLint);
+// 	pub fn glUniform3f(location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat);
+// 	pub fn glUniform3i(location: GLint, v0: GLint, v1: GLint, v2: GLint);
+// 	pub fn glUniform4f(location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat, v3: GLfloat);
+// 	pub fn glUniform4i(location: GLint, v0: GLint, v1: GLint, v2: GLint, v3: GLint);
+// 	pub fn glUniformMatrix2fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
+// 	pub fn glUniformMatrix3fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
+// 	pub fn glValidateProgram(program: GLuint);
+// 	pub fn glVertexAttrib1f(index: GLuint, x: GLfloat);
+// 	pub fn glVertexAttrib1fv(index: GLuint, v: *const GLfloat);
+// 	pub fn glVertexAttrib2f(index: GLuint, x: GLfloat, y: GLfloat);
+// 	pub fn glVertexAttrib2fv(index: GLuint, v: *const GLfloat);
+// 	pub fn glVertexAttrib3f(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat);
+// 	pub fn glVertexAttrib3fv(index: GLuint, v: *const GLfloat);
+// 	pub fn glVertexAttrib4f(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat);
+// 	pub fn glVertexAttrib4fv(index: GLuint, v: *const GLfloat);
+// 	pub fn glReadBuffer(src: GLenum);
+// 	pub fn glDrawRangeElements(mode: GLenum, start: GLuint, end: GLuint, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void);
+// 	pub fn glTexImage3D(
+// 		target: GLenum,
+// 		level: GLint,
+// 		internalformat: GLint,
+// 		width: GLsizei,
+// 		height: GLsizei,
+// 		depth: GLsizei,
+// 		border: GLint,
+// 		format: GLenum,
+// 		type_: GLenum,
+// 		pixels: *const ::std::os::raw::c_void,
+// 	);
+// 	pub fn glTexSubImage3D(
+// 		target: GLenum,
+// 		level: GLint,
+// 		xoffset: GLint,
+// 		yoffset: GLint,
+// 		zoffset: GLint,
+// 		width: GLsizei,
+// 		height: GLsizei,
+// 		depth: GLsizei,
+// 		format: GLenum,
+// 		type_: GLenum,
+// 		pixels: *const ::std::os::raw::c_void,
+// 	);
+// 	pub fn glCopyTexSubImage3D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, zoffset: GLint, x: GLint, y: GLint, width: GLsizei, height: GLsizei);
+// 	pub fn glCompressedTexImage3D(target: GLenum, level: GLint, internalformat: GLenum, width: GLsizei, height: GLsizei, depth: GLsizei, border: GLint, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
+// 	pub fn glCompressedTexSubImage3D(
+// 		target: GLenum,
+// 		level: GLint,
+// 		xoffset: GLint,
+// 		yoffset: GLint,
+// 		zoffset: GLint,
+// 		width: GLsizei,
+// 		height: GLsizei,
+// 		depth: GLsizei,
+// 		format: GLenum,
+// 		imageSize: GLsizei,
+// 		data: *const ::std::os::raw::c_void,
+// 	);
 
-	pub fn glIsQuery(id: GLuint) -> GLboolean;
-	pub fn glGetQueryiv(target: GLenum, pname: GLenum, params: *mut GLint);
-	pub fn glQueryCounter(id: GLenum, pname: GLenum);
-	pub fn glGetQueryObjectiv(id: GLuint, pname: GLenum, params: *mut GLint);
-	pub fn glGetQueryObjectui64v(id: GLuint, pname: GLenum, params: *mut GLuint64);
-	pub fn glUnmapBuffer(target: GLenum) -> GLboolean;
-	pub fn glGetBufferPointerv(target: GLenum, pname: GLenum, params: *mut *mut ::std::os::raw::c_void);
-	pub fn glUniformMatrix2x3fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
-	pub fn glUniformMatrix3x2fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
-	pub fn glUniformMatrix2x4fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
-	pub fn glUniformMatrix4x2fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
-	pub fn glUniformMatrix3x4fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
-	pub fn glUniformMatrix4x3fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
-	pub fn glBlitFramebuffer(srcX0: GLint, srcY0: GLint, srcX1: GLint, srcY1: GLint, dstX0: GLint, dstY0: GLint, dstX1: GLint, dstY1: GLint, mask: GLbitfield, filter: GLenum);
-	pub fn glRenderbufferStorageMultisample(target: GLenum, samples: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei);
-	pub fn glFramebufferTextureLayer(target: GLenum, attachment: GLenum, texture: GLuint, level: GLint, layer: GLint);
-	pub fn glMapBufferRange(target: GLenum, offset: GLintptr, length: GLsizeiptr, access: GLbitfield) -> *mut ::std::os::raw::c_void;
-	pub fn glFlushMappedBufferRange(target: GLenum, offset: GLintptr, length: GLsizeiptr);
-	pub fn glDeleteVertexArrays(n: GLsizei, arrays: *const GLuint);
-	pub fn glIsVertexArray(array: GLuint) -> GLboolean;
-	pub fn glGetIntegeri_v(target: GLenum, index: GLuint, data: *mut GLint);
-	pub fn glBeginTransformFeedback(primitiveMode: GLenum);
-	pub fn glEndTransformFeedback();
-	pub fn glBindBufferRange(target: GLenum, index: GLuint, buffer: GLuint, offset: GLintptr, size: GLsizeiptr);
-	pub fn glBindBufferBase(target: GLenum, index: GLuint, buffer: GLuint);
-	pub fn glTransformFeedbackVaryings(program: GLuint, count: GLsizei, varyings: *const *const GLchar, bufferMode: GLenum);
-	pub fn glGetTransformFeedbackVarying(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLsizei, type_: *mut GLenum, name: *mut GLchar);
-	pub fn glVertexAttribIPointer(index: GLuint, size: GLint, type_: GLenum, stride: GLsizei, pointer: *const ::std::os::raw::c_void);
-	pub fn glGetVertexAttribIiv(index: GLuint, pname: GLenum, params: *mut GLint);
-	pub fn glGetVertexAttribIuiv(index: GLuint, pname: GLenum, params: *mut GLuint);
-	pub fn glVertexAttribI4i(index: GLuint, x: GLint, y: GLint, z: GLint, w: GLint);
-	pub fn glVertexAttribI4ui(index: GLuint, x: GLuint, y: GLuint, z: GLuint, w: GLuint);
-	pub fn glVertexAttribI4iv(index: GLuint, v: *const GLint);
-	pub fn glVertexAttribI4uiv(index: GLuint, v: *const GLuint);
-	pub fn glGetUniformuiv(program: GLuint, location: GLint, params: *mut GLuint);
-	pub fn glGetFragDataLocation(program: GLuint, name: *const GLchar) -> GLint;
-	pub fn glUniform1ui(location: GLint, v0: GLuint);
-	pub fn glUniform2ui(location: GLint, v0: GLuint, v1: GLuint);
-	pub fn glUniform3ui(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint);
-	pub fn glUniform4ui(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint, v3: GLuint);
-	pub fn glUniform1uiv(location: GLint, count: GLsizei, value: *const GLuint);
-	pub fn glUniform2uiv(location: GLint, count: GLsizei, value: *const GLuint);
-	pub fn glUniform3uiv(location: GLint, count: GLsizei, value: *const GLuint);
-	pub fn glUniform4uiv(location: GLint, count: GLsizei, value: *const GLuint);
-	pub fn glClearBufferiv(buffer: GLenum, drawbuffer: GLint, value: *const GLint);
-	pub fn glClearBufferuiv(buffer: GLenum, drawbuffer: GLint, value: *const GLuint);
-	pub fn glClearBufferfv(buffer: GLenum, drawbuffer: GLint, value: *const GLfloat);
-	pub fn glClearBufferfi(buffer: GLenum, drawbuffer: GLint, depth: GLfloat, stencil: GLint);
-	pub fn glGetStringi(name: GLenum, index: GLuint) -> *const GLubyte;
-	pub fn glCopyBufferSubData(readTarget: GLenum, writeTarget: GLenum, readOffset: GLintptr, writeOffset: GLintptr, size: GLsizeiptr);
-	pub fn glGetUniformIndices(program: GLuint, uniformCount: GLsizei, uniformNames: *const *const GLchar, uniformIndices: *mut GLuint);
-	pub fn glGetActiveUniformsiv(program: GLuint, uniformCount: GLsizei, uniformIndices: *const GLuint, pname: GLenum, params: *mut GLint);
-	pub fn glGetUniformBlockIndex(program: GLuint, uniformBlockName: *const GLchar) -> GLuint;
-	pub fn glGetActiveUniformBlockiv(program: GLuint, uniformBlockIndex: GLuint, pname: GLenum, params: *mut GLint);
-	pub fn glGetActiveUniformBlockName(program: GLuint, uniformBlockIndex: GLuint, bufSize: GLsizei, length: *mut GLsizei, uniformBlockName: *mut GLchar);
-	pub fn glUniformBlockBinding(program: GLuint, uniformBlockIndex: GLuint, uniformBlockBinding: GLuint);
+// 	pub fn glIsQuery(id: GLuint) -> GLboolean;
+// 	pub fn glGetQueryiv(target: GLenum, pname: GLenum, params: *mut GLint);
+// 	pub fn glQueryCounter(id: GLenum, pname: GLenum);
+// 	pub fn glGetQueryObjectiv(id: GLuint, pname: GLenum, params: *mut GLint);
+// 	pub fn glGetQueryObjectui64v(id: GLuint, pname: GLenum, params: *mut GLuint64);
+// 	pub fn glUnmapBuffer(target: GLenum) -> GLboolean;
+// 	pub fn glGetBufferPointerv(target: GLenum, pname: GLenum, params: *mut *mut ::std::os::raw::c_void);
+// 	pub fn glUniformMatrix2x3fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
+// 	pub fn glUniformMatrix3x2fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
+// 	pub fn glUniformMatrix2x4fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
+// 	pub fn glUniformMatrix4x2fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
+// 	pub fn glUniformMatrix3x4fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
+// 	pub fn glUniformMatrix4x3fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
+// 	pub fn glBlitFramebuffer(srcX0: GLint, srcY0: GLint, srcX1: GLint, srcY1: GLint, dstX0: GLint, dstY0: GLint, dstX1: GLint, dstY1: GLint, mask: GLbitfield, filter: GLenum);
+// 	pub fn glRenderbufferStorageMultisample(target: GLenum, samples: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei);
+// 	pub fn glFramebufferTextureLayer(target: GLenum, attachment: GLenum, texture: GLuint, level: GLint, layer: GLint);
+// 	pub fn glMapBufferRange(target: GLenum, offset: GLintptr, length: GLsizeiptr, access: GLbitfield) -> *mut ::std::os::raw::c_void;
+// 	pub fn glFlushMappedBufferRange(target: GLenum, offset: GLintptr, length: GLsizeiptr);
+// 	pub fn glDeleteVertexArrays(n: GLsizei, arrays: *const GLuint);
+// 	pub fn glIsVertexArray(array: GLuint) -> GLboolean;
+// 	pub fn glGetIntegeri_v(target: GLenum, index: GLuint, data: *mut GLint);
+// 	pub fn glBeginTransformFeedback(primitiveMode: GLenum);
+// 	pub fn glEndTransformFeedback();
+// 	pub fn glBindBufferRange(target: GLenum, index: GLuint, buffer: GLuint, offset: GLintptr, size: GLsizeiptr);
+// 	pub fn glBindBufferBase(target: GLenum, index: GLuint, buffer: GLuint);
+// 	pub fn glTransformFeedbackVaryings(program: GLuint, count: GLsizei, varyings: *const *const GLchar, bufferMode: GLenum);
+// 	pub fn glGetTransformFeedbackVarying(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLsizei, type_: *mut GLenum, name: *mut GLchar);
+// 	pub fn glVertexAttribIPointer(index: GLuint, size: GLint, type_: GLenum, stride: GLsizei, pointer: *const ::std::os::raw::c_void);
+// 	pub fn glGetVertexAttribIiv(index: GLuint, pname: GLenum, params: *mut GLint);
+// 	pub fn glGetVertexAttribIuiv(index: GLuint, pname: GLenum, params: *mut GLuint);
+// 	pub fn glVertexAttribI4i(index: GLuint, x: GLint, y: GLint, z: GLint, w: GLint);
+// 	pub fn glVertexAttribI4ui(index: GLuint, x: GLuint, y: GLuint, z: GLuint, w: GLuint);
+// 	pub fn glVertexAttribI4iv(index: GLuint, v: *const GLint);
+// 	pub fn glVertexAttribI4uiv(index: GLuint, v: *const GLuint);
+// 	pub fn glGetUniformuiv(program: GLuint, location: GLint, params: *mut GLuint);
+// 	pub fn glGetFragDataLocation(program: GLuint, name: *const GLchar) -> GLint;
+// 	pub fn glUniform1ui(location: GLint, v0: GLuint);
+// 	pub fn glUniform2ui(location: GLint, v0: GLuint, v1: GLuint);
+// 	pub fn glUniform3ui(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint);
+// 	pub fn glUniform4ui(location: GLint, v0: GLuint, v1: GLuint, v2: GLuint, v3: GLuint);
+// 	pub fn glUniform1uiv(location: GLint, count: GLsizei, value: *const GLuint);
+// 	pub fn glUniform2uiv(location: GLint, count: GLsizei, value: *const GLuint);
+// 	pub fn glUniform3uiv(location: GLint, count: GLsizei, value: *const GLuint);
+// 	pub fn glUniform4uiv(location: GLint, count: GLsizei, value: *const GLuint);
+// 	pub fn glClearBufferiv(buffer: GLenum, drawbuffer: GLint, value: *const GLint);
+// 	pub fn glClearBufferuiv(buffer: GLenum, drawbuffer: GLint, value: *const GLuint);
+// 	pub fn glClearBufferfv(buffer: GLenum, drawbuffer: GLint, value: *const GLfloat);
+// 	pub fn glClearBufferfi(buffer: GLenum, drawbuffer: GLint, depth: GLfloat, stencil: GLint);
+// 	pub fn glGetStringi(name: GLenum, index: GLuint) -> *const GLubyte;
+// 	pub fn glCopyBufferSubData(readTarget: GLenum, writeTarget: GLenum, readOffset: GLintptr, writeOffset: GLintptr, size: GLsizeiptr);
+// 	pub fn glGetUniformIndices(program: GLuint, uniformCount: GLsizei, uniformNames: *const *const GLchar, uniformIndices: *mut GLuint);
+// 	pub fn glGetActiveUniformsiv(program: GLuint, uniformCount: GLsizei, uniformIndices: *const GLuint, pname: GLenum, params: *mut GLint);
+// 	pub fn glGetUniformBlockIndex(program: GLuint, uniformBlockName: *const GLchar) -> GLuint;
+// 	pub fn glGetActiveUniformBlockiv(program: GLuint, uniformBlockIndex: GLuint, pname: GLenum, params: *mut GLint);
+// 	pub fn glGetActiveUniformBlockName(program: GLuint, uniformBlockIndex: GLuint, bufSize: GLsizei, length: *mut GLsizei, uniformBlockName: *mut GLchar);
+// 	pub fn glUniformBlockBinding(program: GLuint, uniformBlockIndex: GLuint, uniformBlockBinding: GLuint);
 
-	pub fn glFenceSync(condition: GLenum, flags: GLbitfield) -> GLsync;
-	pub fn glIsSync(sync: GLsync) -> GLboolean;
-	pub fn glDeleteSync(sync: GLsync);
-	pub fn glClientWaitSync(sync: GLsync, flags: GLbitfield, timeout: GLuint64) -> GLenum;
-	pub fn glWaitSync(sync: GLsync, flags: GLbitfield, timeout: GLuint64);
-	pub fn glGetInteger64v(pname: GLenum, data: *mut GLint64);
-	pub fn glGetSynciv(sync: GLsync, pname: GLenum, bufSize: GLsizei, length: *mut GLsizei, values: *mut GLint);
-	pub fn glGetInteger64i_v(target: GLenum, index: GLuint, data: *mut GLint64);
-	pub fn glGetBufferParameteri64v(target: GLenum, pname: GLenum, params: *mut GLint64);
-	pub fn glGenSamplers(count: GLsizei, samplers: *mut GLuint);
-	pub fn glDeleteSamplers(count: GLsizei, samplers: *const GLuint);
-	pub fn glIsSampler(sampler: GLuint) -> GLboolean;
-	pub fn glBindSampler(unit: GLuint, sampler: GLuint);
-	pub fn glSamplerParameteri(sampler: GLuint, pname: GLenum, param: GLint);
-	pub fn glSamplerParameteriv(sampler: GLuint, pname: GLenum, param: *const GLint);
-	pub fn glSamplerParameterf(sampler: GLuint, pname: GLenum, param: GLfloat);
-	pub fn glSamplerParameterfv(sampler: GLuint, pname: GLenum, param: *const GLfloat);
-	pub fn glGetSamplerParameteriv(sampler: GLuint, pname: GLenum, params: *mut GLint);
-	pub fn glGetSamplerParameterfv(sampler: GLuint, pname: GLenum, params: *mut GLfloat);
-	pub fn glBindTransformFeedback(target: GLenum, id: GLuint);
-	pub fn glDeleteTransformFeedbacks(n: GLsizei, ids: *const GLuint);
-	pub fn glGenTransformFeedbacks(n: GLsizei, ids: *mut GLuint);
-	pub fn glIsTransformFeedback(id: GLuint) -> GLboolean;
-	pub fn glPauseTransformFeedback();
-	pub fn glResumeTransformFeedback();
-	pub fn glGetProgramBinary(program: GLuint, bufSize: GLsizei, length: *mut GLsizei, binaryFormat: *mut GLenum, binary: *mut ::std::os::raw::c_void);
-	pub fn glProgramBinary(program: GLuint, binaryFormat: GLenum, binary: *const ::std::os::raw::c_void, length: GLsizei);
-	pub fn glProgramParameteri(program: GLuint, pname: GLenum, value: GLint);
-	pub fn glInvalidateFramebuffer(target: GLenum, numAttachments: GLsizei, attachments: *const GLenum);
-	pub fn glInvalidateSubFramebuffer(target: GLenum, numAttachments: GLsizei, attachments: *const GLenum, x: GLint, y: GLint, width: GLsizei, height: GLsizei);
-	pub fn glTexStorage2D(target: GLenum, levels: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei);
-	pub fn glTexStorage3D(target: GLenum, levels: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei, depth: GLsizei);
-	pub fn glGetInternalformativ(target: GLenum, internalformat: GLenum, pname: GLenum, bufSize: GLsizei, params: *mut GLint);
-}
+// 	pub fn glFenceSync(condition: GLenum, flags: GLbitfield) -> GLsync;
+// 	pub fn glIsSync(sync: GLsync) -> GLboolean;
+// 	pub fn glDeleteSync(sync: GLsync);
+// 	pub fn glClientWaitSync(sync: GLsync, flags: GLbitfield, timeout: GLuint64) -> GLenum;
+// 	pub fn glWaitSync(sync: GLsync, flags: GLbitfield, timeout: GLuint64);
+// 	pub fn glGetInteger64v(pname: GLenum, data: *mut GLint64);
+// 	pub fn glGetSynciv(sync: GLsync, pname: GLenum, bufSize: GLsizei, length: *mut GLsizei, values: *mut GLint);
+// 	pub fn glGetInteger64i_v(target: GLenum, index: GLuint, data: *mut GLint64);
+// 	pub fn glGetBufferParameteri64v(target: GLenum, pname: GLenum, params: *mut GLint64);
+// 	pub fn glGenSamplers(count: GLsizei, samplers: *mut GLuint);
+// 	pub fn glDeleteSamplers(count: GLsizei, samplers: *const GLuint);
+// 	pub fn glIsSampler(sampler: GLuint) -> GLboolean;
+// 	pub fn glBindSampler(unit: GLuint, sampler: GLuint);
+// 	pub fn glSamplerParameteri(sampler: GLuint, pname: GLenum, param: GLint);
+// 	pub fn glSamplerParameteriv(sampler: GLuint, pname: GLenum, param: *const GLint);
+// 	pub fn glSamplerParameterf(sampler: GLuint, pname: GLenum, param: GLfloat);
+// 	pub fn glSamplerParameterfv(sampler: GLuint, pname: GLenum, param: *const GLfloat);
+// 	pub fn glGetSamplerParameteriv(sampler: GLuint, pname: GLenum, params: *mut GLint);
+// 	pub fn glGetSamplerParameterfv(sampler: GLuint, pname: GLenum, params: *mut GLfloat);
+// 	pub fn glBindTransformFeedback(target: GLenum, id: GLuint);
+// 	pub fn glDeleteTransformFeedbacks(n: GLsizei, ids: *const GLuint);
+// 	pub fn glGenTransformFeedbacks(n: GLsizei, ids: *mut GLuint);
+// 	pub fn glIsTransformFeedback(id: GLuint) -> GLboolean;
+// 	pub fn glPauseTransformFeedback();
+// 	pub fn glResumeTransformFeedback();
+// 	pub fn glGetProgramBinary(program: GLuint, bufSize: GLsizei, length: *mut GLsizei, binaryFormat: *mut GLenum, binary: *mut ::std::os::raw::c_void);
+// 	pub fn glProgramBinary(program: GLuint, binaryFormat: GLenum, binary: *const ::std::os::raw::c_void, length: GLsizei);
+// 	pub fn glProgramParameteri(program: GLuint, pname: GLenum, value: GLint);
+// 	pub fn glInvalidateFramebuffer(target: GLenum, numAttachments: GLsizei, attachments: *const GLenum);
+// 	pub fn glInvalidateSubFramebuffer(target: GLenum, numAttachments: GLsizei, attachments: *const GLenum, x: GLint, y: GLint, width: GLsizei, height: GLsizei);
+// 	pub fn glTexStorage2D(target: GLenum, levels: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei);
+// 	pub fn glTexStorage3D(target: GLenum, levels: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei, depth: GLsizei);
+// 	pub fn glGetInternalformativ(target: GLenum, internalformat: GLenum, pname: GLenum, bufSize: GLsizei, params: *mut GLint);
+// }
