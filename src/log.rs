@@ -191,35 +191,35 @@ pub fn __private_api_log_lit(message: &str, level: Level, &(_, _, file, line): &
 		Level::Debug => {
 			let header = "%c[DEBUG]".into();
 			let style = "color: blue; font-weight: bold".into();
-			let message = format!("{}:{} {}", file, line, message).into();
+			let message = format!("{}:{}\n{}", file, line, message).into();
 
 			console::debug_3(&header, &style, &message);
 		}
 		Level::Warn => {
 			let header = "%c[WARN]".into();
 			let style = "color: orange; font-weight: bold".into();
-			let message = format!("{}:{} {}", file, line, message).into();
+			let message = format!("{}:{}\n{}", file, line, message).into();
 
 			console::warn_3(&header, &style, &message);
 		}
 		Level::Info => {
 			let header = "%c[INFO]".into();
 			let style = "color: green; font-weight: bold".into();
-			let message = format!("{}:{} {}", file, line, message).into();
+			let message = format!("{}:{}\n{}", file, line, message).into();
 
 			console::info_3(&header, &style, &message);
 		}
 		Level::Trace => {
 			let header = "%c[TRACE]".into();
 			let style = "color: grey; font-weight: bold".into();
-			let message = format!("{}:{} {}", file, line, message).into();
+			let message = format!("{}:{}\n{}", file, line, message).into();
 
 			console::debug_3(&header, &style, &message);
 		}
 		Level::Error => {
 			let header = "%c[ERROR]".into();
 			let style = "color: red; font-weight: bold".into();
-			let message = format!("{}:{} {}", file, line, message).into();
+			let message = format!("{}:{}\n{}", file, line, message).into();
 
 			console::error_3(&header, &style, &message);
 		}
