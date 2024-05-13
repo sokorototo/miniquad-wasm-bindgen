@@ -383,14 +383,18 @@ fn init_focus_events(canvas: &HtmlCanvasElement) {
 }
 
 fn init_resize_events(canvas: &HtmlCanvasElement) {
-	let handler: Closure<dyn Fn(_)> = Closure::new(|ev: ResizeObserverEntry| {
+	let handler: Closure<dyn Fn(_)> = Closure::new(|entries: js_sys::Array| {
 		let event_handler = get_event_handler(None);
 
-		let rect = ev.content_rect();
-		let width = rect.width() as _;
-		let height = rect.height() as _;
+		for entry in entries.iter() {
+			let entry: ResizeObserverEntry = entry.unchecked_into();
 
-		event_handler.resize_event(width, height)
+			let rect = entry.content_rect();
+			let width = rect.width() as _;
+			let height = rect.height() as _;
+
+			event_handler.resize_event(width, height)
+		}
 	});
 
 	let fn_ref = handler.as_ref().unchecked_ref();
