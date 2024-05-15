@@ -114,7 +114,7 @@ impl X11Display {
 				if (*event).xclient.message_type == self.libx11.extensions.wm_protocols {
 					let protocol = (*event).xclient.data.l[0 as libc::c_int as usize] as Atom;
 					if protocol == self.libx11.extensions.wm_delete_window {
-						d.quit_requested = true;
+						d.quit = event_handler.quit_requested_event();
 					}
 				}
 			}
@@ -140,13 +140,8 @@ impl X11Display {
 		};
 
 		let mut d = crate::native_display().try_lock().unwrap();
-		if d.quit_requested && !d.quit_ordered {
+		if event_handler.quit_requested_event() {
 			drop(d);
-			event_handler.quit_requested_event();
-			let mut d = crate::native_display().try_lock().unwrap();
-			if d.quit_requested {
-				d.quit_ordered = true
-			}
 		}
 	}
 
@@ -320,7 +315,7 @@ where
 
 	let mut event_handler = (f.take().unwrap())();
 
-	while !crate::native_display().try_lock().unwrap().quit_ordered {
+	while !crate::native_display().try_lock().unwrap().quit {
 		while let Ok(request) = rx.try_recv() {
 			display.process_request(request);
 		}
@@ -393,7 +388,7 @@ where
 
 	let mut event_handler = (f.take().unwrap())();
 
-	while !crate::native_display().try_lock().unwrap().quit_ordered {
+	while !crate::native_display().try_lock().unwrap().quit {
 		while let Ok(request) = rx.try_recv() {
 			display.process_request(request);
 		}
