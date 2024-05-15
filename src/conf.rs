@@ -117,7 +117,8 @@ impl Default for PlatformSettings {
 		PlatformSettings {
 			linux_x11_gl: LinuxX11Gl::GLXWithEGLFallback,
 			swap_interval: None,
-			linux_backend: LinuxBackend::WaylandWithX11Fallback,
+			// TODO: Wayland Backend is very incomplete
+			linux_backend: LinuxBackend::X11Only,
 			apple_gfx_api: AppleGfxApi::OpenGl,
 			framebuffer_alpha: false,
 			wayland_use_fallback_decorations: true,

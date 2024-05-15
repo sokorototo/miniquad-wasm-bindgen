@@ -155,10 +155,12 @@ unsafe extern "C" fn keyboard_handle_key(data: *mut ::std::os::raw::c_void, _wl_
 	let keycode = keycodes::translate(keysym);
 	EVENTS.push(WaylandEvent::KeyboardKey(keycode, state == 1));
 }
+
 unsafe extern "C" fn keyboard_handle_modifiers(data: *mut ::std::os::raw::c_void, _wl_keyboard: *mut wl_keyboard, _serial: u32, mods_depressed: u32, mods_latched: u32, mods_locked: u32, group: u32) {
 	let display: &mut WaylandPayload = &mut *(data as *mut _);
 	(display.xkb.xkb_state_update_mask)(display.xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
 }
+
 unsafe extern "C" fn keyboard_handle_repeat_info(_data: *mut ::std::os::raw::c_void, _wl_keyboard: *mut wl_keyboard, _rate: i32, _delay: i32) {}
 
 static mut POINTER_LISTENER: wl_pointer_listener = wl_pointer_listener {
