@@ -144,7 +144,7 @@ impl EventHandler for Mandelbrot {
 	fn key_down_event(&mut self, keycode: KeyCode, _: KeyMods, _: bool) {
 		match keycode {
 			KeyCode::R => self.center = (0.0, 0.0),
-			KeyCode::Escape => window::request_quit(),
+			KeyCode::Escape => window::quit(),
 			_ => {}
 		}
 	}

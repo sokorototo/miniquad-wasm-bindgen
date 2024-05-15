@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(non_camel_case_types)]
 
 mod libwayland_client;
 mod libwayland_egl;
@@ -18,7 +18,7 @@ use crate::{
 	native::{egl, NativeDisplayData, Request},
 };
 
-use std::collections::HashSet;
+use std::{collections::HashSet, ptr::addr_of};
 
 fn wl_fixed_to_double(f: i32) -> f32 {
 	(f as f32) / 256.0
@@ -104,7 +104,7 @@ unsafe extern "C" fn seat_handle_capabilities(data: *mut std::ffi::c_void, seat:
 		let id: *mut wl_proxy = wl_request_constructor!(display.client, seat, WL_SEAT_GET_POINTER, display.client.wl_pointer_interface);
 		assert!(!id.is_null());
 		// wl_pointer_add_listener (pointer, &pointer_listener, NULL);
-		(display.client.wl_proxy_add_listener)(id, &POINTER_LISTENER as *const _ as _, data);
+		(display.client.wl_proxy_add_listener)(id, std::ptr::addr_of!(POINTER_LISTENER) as _, data);
 	}
 
 	if caps & wl_seat_capability_WL_SEAT_CAPABILITY_KEYBOARD != 0 {
@@ -112,7 +112,7 @@ unsafe extern "C" fn seat_handle_capabilities(data: *mut std::ffi::c_void, seat:
 		let id: *mut wl_proxy = wl_request_constructor!(display.client, seat, WL_SEAT_GET_KEYBOARD, display.client.wl_keyboard_interface);
 		assert!(!id.is_null());
 		// wl_keyboard_add_listener(keyboard, &keyboard_listener, NULL);
-		(display.client.wl_proxy_add_listener)(id, &KEYBOARD_LISTENER as *const _ as _, data);
+		(display.client.wl_proxy_add_listener)(id, std::ptr::addr_of!(KEYBOARD_LISTENER) as _, data);
 	}
 }
 
@@ -192,7 +192,7 @@ unsafe extern "C" fn pointer_handle_button(_data: *mut ::std::os::raw::c_void, _
 		274 => MouseButton::Middle,
 		0x115 => MouseButton::Other(4),
 		0x116 => MouseButton::Other(5),
-		n => return,
+		_n => return,
 	};
 	EVENTS.push(WaylandEvent::PointerButton(button, state == 1));
 }
@@ -233,13 +233,13 @@ unsafe extern "C" fn registry_add_object(data: *mut std::ffi::c_void, registry: 
 			display.subcompositor = display.client.wl_registry_bind(registry, name, display.client.wl_subcompositor_interface, 1) as _;
 		}
 		"xdg_wm_base" => {
-			display.xdg_wm_base = display.client.wl_registry_bind(registry, name, &extensions::xdg_shell::xdg_wm_base_interface, 1) as _;
+			display.xdg_wm_base = display.client.wl_registry_bind(registry, name, addr_of!(extensions::xdg_shell::xdg_wm_base_interface), 1) as _;
 		}
 		"zxdg_decoration_manager" | "zxdg_decoration_manager_v1" => {
-			display.decoration_manager = display.client.wl_registry_bind(registry, name, &extensions::xdg_decoration::zxdg_decoration_manager_v1_interface, 1) as _;
+			display.decoration_manager = display.client.wl_registry_bind(registry, name, addr_of!(extensions::xdg_decoration::zxdg_decoration_manager_v1_interface), 1) as _;
 		}
 		"wp_viewporter" => {
-			display.viewporter = display.client.wl_registry_bind(registry, name, &extensions::viewporter::wp_viewporter_interface, 1) as _;
+			display.viewporter = display.client.wl_registry_bind(registry, name, addr_of!(extensions::viewporter::wp_viewporter_interface), 1) as _;
 		}
 		"wl_shm" => {
 			display.shm = display.client.wl_registry_bind(registry, name, display.client.wl_shm_interface, 1) as _;
@@ -247,7 +247,7 @@ unsafe extern "C" fn registry_add_object(data: *mut std::ffi::c_void, registry: 
 		"wl_seat" => {
 			let seat_version = 4.min(version);
 			display.seat = display.client.wl_registry_bind(registry, name, display.client.wl_seat_interface, seat_version) as _;
-			(display.client.wl_proxy_add_listener)(display.seat as _, &SEAT_LISTENER as *const _ as _, data);
+			(display.client.wl_proxy_add_listener)(display.seat as _, addr_of!(SEAT_LISTENER) as *const _ as _, data);
 		}
 
 		_ => {}
@@ -400,7 +400,7 @@ where
 			display.client,
 			display.xdg_wm_base,
 			extensions::xdg_shell::xdg_wm_base::get_xdg_surface,
-			&extensions::xdg_shell::xdg_surface_interface,
+			addr_of!(extensions::xdg_shell::xdg_surface_interface),
 			display.surface
 		);
 		assert!(xdg_surface.is_null() == false);
@@ -411,7 +411,12 @@ where
 
 		(display.client.wl_proxy_add_listener)(xdg_surface as _, &xdg_surface_listener as *const _ as _, &mut display as *mut _ as _);
 
-		display.xdg_toplevel = wl_request_constructor!(display.client, xdg_surface, extensions::xdg_shell::xdg_surface::get_toplevel, &extensions::xdg_shell::xdg_toplevel_interface);
+		display.xdg_toplevel = wl_request_constructor!(
+			display.client,
+			xdg_surface,
+			extensions::xdg_shell::xdg_surface::get_toplevel,
+			addr_of!(extensions::xdg_shell::xdg_toplevel_interface)
+		);
 		assert!(display.xdg_toplevel.is_null() == false);
 
 		let xdg_toplevel_listener = extensions::xdg_shell::xdg_toplevel_listener {
@@ -460,7 +465,7 @@ where
 				display.client,
 				display.decoration_manager,
 				extensions::xdg_decoration::zxdg_decoration_manager_v1::get_toplevel_decoration,
-				&extensions::xdg_decoration::zxdg_toplevel_decoration_v1_interface,
+				addr_of!(extensions::xdg_decoration::zxdg_toplevel_decoration_v1_interface),
 				display.xdg_toplevel
 			);
 			assert!(server_decoration.is_null() == false);

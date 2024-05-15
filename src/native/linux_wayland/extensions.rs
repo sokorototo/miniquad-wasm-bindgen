@@ -40,7 +40,7 @@ macro_rules! wayland_interface {
                 mod $method_name {
                     use super::*;
 
-                    pub static mut METHOD_ARGUMENTS_TYPES: [*const wl_interface; crate::count!($($method_argument_name)*)] = [$(unsafe { &$method_argument_name as *const _},)*];
+                    pub static mut METHOD_ARGUMENTS_TYPES: [*const wl_interface; crate::count!($($method_argument_name)*)] = [$(unsafe { std::ptr::addr_of!($method_argument_name)},)*];
 
                 }
             )*

@@ -22,10 +22,10 @@ impl LibX11 {
 	}
 
 	pub unsafe fn grab_error_handler(&mut self) {
-		pub unsafe extern "C" fn _sapp_x11_error_handler(mut _display: *mut Display, event: *mut XErrorEvent) -> libc::c_int {
+		pub unsafe extern "C" fn _sapp_x11_error_handler(mut _display: *mut Display, _event: *mut XErrorEvent) -> libc::c_int {
 			#[cfg(feature = "log-impl")]
-			crate::error!("Error: {}", (*event).error_code);
-			return 0 as libc::c_int;
+			crate::error!("Error: {}", (*_event).error_code);
+			return 0;
 		}
 
 		(self.XSetErrorHandler)(Some(_sapp_x11_error_handler as unsafe extern "C" fn(_: *mut Display, _: *mut XErrorEvent) -> libc::c_int));
@@ -141,7 +141,7 @@ impl LibX11 {
 
 		let mut protocols: [Atom; 1] = [self.extensions.wm_delete_window];
 		(self.XSetWMProtocols)(display, window, protocols.as_mut_ptr(), 1 as libc::c_int);
-		let mut hints = (self.XAllocSizeHints)();
+		let hints = (self.XAllocSizeHints)();
 		(*hints).flags |= PWinGravity;
 		if conf.window_resizable == false {
 			(*hints).flags |= PMinSize | PMaxSize;

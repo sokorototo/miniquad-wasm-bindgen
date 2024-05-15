@@ -101,7 +101,7 @@ pub mod window {
 	/// Window might not be actually closed right away (exit(0) might not
 	/// happen in the order_quit implmentation) and execution might continue for some time after
 	/// But the window is going to be inevitably closed at some point.
-	pub fn order_quit() {
+	pub fn quit() {
 		let mut d = native_display().lock().unwrap();
 		d.quit = true;
 	}

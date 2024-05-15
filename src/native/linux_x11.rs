@@ -139,7 +139,7 @@ impl X11Display {
 			_ => {}
 		};
 
-		let mut d = crate::native_display().try_lock().unwrap();
+		let d = crate::native_display().try_lock().unwrap();
 		if event_handler.quit_requested_event() {
 			drop(d);
 		}

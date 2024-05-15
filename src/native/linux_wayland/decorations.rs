@@ -46,7 +46,7 @@ unsafe fn create_decoration(
 
 	wl_request!(display.client, subsurface, WL_SUBSURFACE_SET_POSITION, x, y);
 
-	let viewport = wl_request_constructor!(display.client, display.viewporter, wp_viewporter::get_viewport, &wp_viewport_interface, surface);
+	let viewport = wl_request_constructor!(display.client, display.viewporter, wp_viewporter::get_viewport, std::ptr::addr_of!(wp_viewport_interface), surface);
 
 	wl_request!(display.client, viewport, wp_viewport::set_destination, w, h);
 	wl_request!(display.client, surface, WL_SURFACE_ATTACH, buffer, 0, 0);
