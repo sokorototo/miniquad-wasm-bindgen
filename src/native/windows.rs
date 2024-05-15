@@ -219,27 +219,8 @@ unsafe extern "system" fn win32_wndproc(hwnd: HWND, umsg: UINT, wparam: WPARAM, 
 
 	match umsg {
 		WM_CLOSE => {
-			let mut quit_requested = false;
-
-			let mut d = crate::native_display().lock().unwrap();
-			// only give user a chance to intervene when sapp_quit() wasn't already called
-			if !d.quit_ordered {
-				// if window should be closed and event handling is enabled, give user code
-				// a change to intervene via sapp_cancel_quit()
-				d.quit_requested = true;
-				quit_requested = true;
-				// if user code hasn't intervened, quit the app
-				if d.quit_requested {
-					d.quit_ordered = true;
-				}
-			}
-			if d.quit_ordered {
+			if event_handler.quit_requested_event() {
 				PostQuitMessage(0);
-			}
-
-			if quit_requested {
-				drop(d);
-				event_handler.quit_requested_event();
 			}
 			return 0;
 		}
@@ -772,7 +753,7 @@ where
 		SetWindowLong(wnd, GWLP_USERDATA, &mut display as *mut _ as isize);
 
 		let mut done = false;
-		while !(done || crate::native_display().lock().unwrap().quit_ordered) {
+		while !(done || crate::native_display().lock().unwrap().quit) {
 			while let Ok(request) = rx.try_recv() {
 				display.process_request(request);
 			}
@@ -799,9 +780,6 @@ where
 				let height = d.screen_height as f32;
 				drop(d);
 				display.event_handler.as_mut().unwrap().resize_event(width, height);
-			}
-			if crate::native_display().lock().unwrap().quit_requested {
-				PostMessageW(display.wnd, WM_CLOSE, 0, 0);
 			}
 		}
 

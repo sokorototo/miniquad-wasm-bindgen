@@ -212,11 +212,12 @@ pub trait EventHandler {
 	fn window_restored_event(&mut self) {}
 
 	/// This event is sent when the userclicks the window's close button
-	/// or application code calls the ctx.request_quit() function. The event
-	/// handler callback code can handle this event by calling
-	/// ctx.cancel_quit() to cancel the quit.
-	/// If the event is ignored, the application will quit as usual.
-	fn quit_requested_event(&mut self) {}
+	/// `ctx.quit()` cancels the events loop, and therefore doesn't emit this event.
+	/// This event is sent on Web Targets, but but can't be canceled.
+	/// Return `true` to accept the close operation.
+	fn quit_requested_event(&mut self) -> bool {
+		true
+	}
 
 	/// A file has been dropped over the application.
 	/// Applications can request the number of dropped files with

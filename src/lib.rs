@@ -103,33 +103,9 @@ pub mod window {
 	/// But the window is going to be inevitably closed at some point.
 	pub fn order_quit() {
 		let mut d = native_display().lock().unwrap();
-		d.quit_ordered = true;
+		d.quit = true;
 	}
 
-	/// Shortcut for `order_quit`. Will add a legacy attribute at some point.
-	pub fn quit() {
-		order_quit()
-	}
-
-	/// Calling request_quit() will trigger "quit_requested_event" event , giving
-	/// the user code a chance to intervene and cancel the pending quit process
-	/// (for instance to show a 'Really Quit?' dialog box).
-	/// If the event handler callback does nothing, the application will be quit as usual.
-	/// To prevent this, call the function "cancel_quit()"" from inside the event handler.
-	pub fn request_quit() {
-		let mut d = native_display().lock().unwrap();
-		d.quit_requested = true;
-	}
-
-	/// Cancels a pending quit request, either initiated
-	/// by the user clicking the window close button, or programmatically
-	/// by calling "request_quit()". The only place where calling this
-	/// function makes sense is from inside the event handler callback when
-	/// the "quit_requested_event" event has been received
-	pub fn cancel_quit() {
-		let mut d = native_display().lock().unwrap();
-		d.quit_requested = false;
-	}
 	/// Capture mouse cursor to the current window
 	/// On WASM this will automatically hide cursor
 	/// On desktop this will bound cursor to windows border
