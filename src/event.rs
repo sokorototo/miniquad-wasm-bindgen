@@ -211,9 +211,9 @@ pub trait EventHandler {
 	/// On X11 and wasm it will be called on focus change events.
 	fn window_restored_event(&mut self) {}
 
-	/// This event is sent when the userclicks the window's close button
+	/// This event is sent when the user attempts to exit the application.
 	/// `ctx.quit()` cancels the events loop, and therefore doesn't emit this event.
-	/// This event is sent on Web Targets, but but can't be canceled.
+	/// This event is sent on Web Targets, but user can always override.
 	/// Return `true` to accept the close operation.
 	fn quit_requested_event(&mut self) -> bool {
 		true

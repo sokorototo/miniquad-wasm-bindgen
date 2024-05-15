@@ -87,6 +87,7 @@ where
 
 	// setup event listeners
 	let _ = main_canvas.focus();
+	init_unload_events();
 	init_mouse_events(&main_canvas);
 	init_keyboard_events(&main_canvas);
 	init_focus_events(&main_canvas);
@@ -182,6 +183,19 @@ fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static
 		let callback = closure.as_ref().unchecked_ref();
 		w.request_animation_frame(callback).unwrap_throw();
 	}
+}
+
+fn init_unload_events() {
+	let handler: Closure<dyn Fn(_)> = Closure::new(|ev: BeforeUnloadEvent| {
+		let event_handler = get_event_handler(None);
+		if event_handler.quit_requested_event() {
+			ev.prevent_default();
+		}
+	});
+
+	let fn_ref = handler.as_ref().unchecked_ref();
+	web_sys::window().unwrap().add_event_listener_with_callback("beforeunload", fn_ref).unwrap_throw();
+	handler.forget();
 }
 
 fn init_mouse_events(canvas: &HtmlCanvasElement) {

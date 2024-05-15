@@ -63,6 +63,7 @@ features = [
 	"DomRect",
 	"CssStyleDeclaration",
 	# Input and Events
+	"BeforeUnloadEvent",
 	"ClipboardEvent",
 	"MouseEvent",
 	"WheelEvent",
