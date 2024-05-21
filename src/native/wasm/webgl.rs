@@ -860,10 +860,10 @@ pub fn glActiveTexture(texture: GLenum) {
 	get_gl().active_texture(texture);
 }
 
+#[inline(always)]
 pub unsafe fn glBindTexture(target: GLenum, texture: GLuint) {
-	debug_assert!(TEXTURES.contains_key(&texture));
-	let texture = TEXTURES.get(&texture);
-	get_gl().bind_texture(target, texture);
+	debug_assert!(TEXTURES.contains_key(&texture) || texture == 0);
+	get_gl().bind_texture(target, TEXTURES.get(&texture));
 }
 
 #[inline(always)]
@@ -1064,22 +1064,18 @@ pub unsafe fn glGenBuffers(n: GLsizei, buffers: *mut GLuint) {
 
 #[inline(always)]
 pub unsafe fn glBufferData(target: GLenum, size: GLsizeiptr, data: *const ::std::os::raw::c_void, usage: GLenum) {
-	debug_assert!(data.as_ref().is_some());
 	let data = slice::from_raw_parts(data as *const u8, size as usize);
-
 	get_gl().buffer_data_with_u8_array(target, data, usage);
 }
 
 pub unsafe fn glBufferSubData(target: GLenum, offset: GLintptr, size: GLsizeiptr, data: *const ::std::os::raw::c_void) {
-	debug_assert!(data.as_ref().is_some());
 	let data = slice::from_raw_parts(data as *const u8, size as usize);
-
 	get_gl().buffer_sub_data_with_i32_and_u8_array(target, offset, data);
 }
 
 #[inline(always)]
 pub unsafe fn glBindBuffer(target: GLenum, buffer: GLuint) {
-	debug_assert!(BUFFERS.contains_key(&buffer));
+	debug_assert!(BUFFERS.contains_key(&buffer) || buffer == 0);
 	get_gl().bind_buffer(target, BUFFERS.get(&buffer));
 }
 

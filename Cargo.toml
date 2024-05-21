@@ -17,6 +17,10 @@ exclude = ["examples/"]
 keywords = ["graphics", "3D", "opengl", "gamedev", "windowing"]
 categories = ["rendering::graphics-api"]
 
+[[bin]]
+name = "web"
+path = "examples/quad.rs"
+
 [features]
 log-impl = []
 
