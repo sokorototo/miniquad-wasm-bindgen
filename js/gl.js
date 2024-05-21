@@ -71,6 +71,13 @@ function acquireDisjointTimerQueryExtension(gl) {
     }
 }
 
+function acquireDrawBuffers(ctx) {
+    var ext = ctx.getExtension('WEBGL_draw_buffers');
+    if (ext) {
+        ctx['drawBuffers'] = function (bufs) { return ext['drawBuffersWEBGL'](bufs); };
+    }
+}
+
 try {
     gl.getExtension("EXT_shader_texture_lod");
     gl.getExtension("OES_standard_derivatives");
@@ -81,6 +88,7 @@ try {
 acquireVertexArrayObjectExtension(gl);
 acquireInstancedArraysExtension(gl);
 acquireDisjointTimerQueryExtension(gl);
+acquireDrawBuffers(gl);
 
 // https://developer.mozilla.org/en-US/docs/Web/API/WEBGL_depth_texture
 if (gl.getExtension('WEBGL_depth_texture') == null) {
@@ -248,6 +256,176 @@ function _glGenObject(n, buffers, createFunction, objectTable, _functionName) {
 var Module;
 var wasm_exports;
 
+function resize(canvas, on_resize) {
+    var dpr = dpi_scale();
+    var displayWidth = canvas.clientWidth * dpr;
+    var displayHeight = canvas.clientHeight * dpr;
+
+    if (canvas.width != displayWidth ||
+        canvas.height != displayHeight) {
+        canvas.width = displayWidth;
+        canvas.height = displayHeight;
+        if (on_resize != undefined)
+            on_resize(Math.floor(displayWidth), Math.floor(displayHeight))
+    }
+}
+
+function animation() {
+    wasm_exports.frame();
+    window.requestAnimationFrame(animation);
+}
+
+const SAPP_EVENTTYPE_TOUCHES_BEGAN = 10;
+const SAPP_EVENTTYPE_TOUCHES_MOVED = 11;
+const SAPP_EVENTTYPE_TOUCHES_ENDED = 12;
+const SAPP_EVENTTYPE_TOUCHES_CANCELED = 13;
+
+const SAPP_MODIFIER_SHIFT = 1;
+const SAPP_MODIFIER_CTRL = 2;
+const SAPP_MODIFIER_ALT = 4;
+const SAPP_MODIFIER_SUPER = 8;
+
+function into_sapp_mousebutton(btn) {
+    switch (btn) {
+        case 0: return 0;
+        case 1: return 2;
+        case 2: return 1;
+        default: return btn;
+    }
+}
+
+function into_sapp_keycode(key_code) {
+    switch (key_code) {
+        case "Space": return 32;
+        case "Quote": return 222;
+        case "Comma": return 44;
+        case "Minus": return 45;
+        case "Period": return 46;
+        case "Slash": return 189;
+        case "Digit0": return 48;
+        case "Digit1": return 49;
+        case "Digit2": return 50;
+        case "Digit3": return 51;
+        case "Digit4": return 52;
+        case "Digit5": return 53;
+        case "Digit6": return 54;
+        case "Digit7": return 55;
+        case "Digit8": return 56;
+        case "Digit9": return 57;
+        case "Semicolon": return 59;
+        case "Equal": return 61;
+        case "KeyA": return 65;
+        case "KeyB": return 66;
+        case "KeyC": return 67;
+        case "KeyD": return 68;
+        case "KeyE": return 69;
+        case "KeyF": return 70;
+        case "KeyG": return 71;
+        case "KeyH": return 72;
+        case "KeyI": return 73;
+        case "KeyJ": return 74;
+        case "KeyK": return 75;
+        case "KeyL": return 76;
+        case "KeyM": return 77;
+        case "KeyN": return 78;
+        case "KeyO": return 79;
+        case "KeyP": return 80;
+        case "KeyQ": return 81;
+        case "KeyR": return 82;
+        case "KeyS": return 83;
+        case "KeyT": return 84;
+        case "KeyU": return 85;
+        case "KeyV": return 86;
+        case "KeyW": return 87;
+        case "KeyX": return 88;
+        case "KeyY": return 89;
+        case "KeyZ": return 90;
+        case "BracketLeft": return 91;
+        case "Backslash": return 92;
+        case "BracketRight": return 93;
+        case "Backquote": return 96;
+        case "Escape": return 256;
+        case "Enter": return 257;
+        case "Tab": return 258;
+        case "Backspace": return 259;
+        case "Insert": return 260;
+        case "Delete": return 261;
+        case "ArrowRight": return 262;
+        case "ArrowLeft": return 263;
+        case "ArrowDown": return 264;
+        case "ArrowUp": return 265;
+        case "PageUp": return 266;
+        case "PageDown": return 267;
+        case "Home": return 268;
+        case "End": return 269;
+        case "CapsLock": return 280;
+        case "ScrollLock": return 281;
+        case "NumLock": return 282;
+        case "PrintScreen": return 283;
+        case "Pause": return 284;
+        case "F1": return 290;
+        case "F2": return 291;
+        case "F3": return 292;
+        case "F4": return 293;
+        case "F5": return 294;
+        case "F6": return 295;
+        case "F7": return 296;
+        case "F8": return 297;
+        case "F9": return 298;
+        case "F10": return 299;
+        case "F11": return 300;
+        case "F12": return 301;
+        case "F13": return 302;
+        case "F14": return 303;
+        case "F15": return 304;
+        case "F16": return 305;
+        case "F17": return 306;
+        case "F18": return 307;
+        case "F19": return 308;
+        case "F20": return 309;
+        case "F21": return 310;
+        case "F22": return 311;
+        case "F23": return 312;
+        case "F24": return 313;
+        case "Numpad0": return 320;
+        case "Numpad1": return 321;
+        case "Numpad2": return 322;
+        case "Numpad3": return 323;
+        case "Numpad4": return 324;
+        case "Numpad5": return 325;
+        case "Numpad6": return 326;
+        case "Numpad7": return 327;
+        case "Numpad8": return 328;
+        case "Numpad9": return 329;
+        case "NumpadDecimal": return 330;
+        case "NumpadDivide": return 331;
+        case "NumpadMultiply": return 332;
+        case "NumpadSubtract": return 333;
+        case "NumpadAdd": return 334;
+        case "NumpadEnter": return 335;
+        case "NumpadEqual": return 336;
+        case "ShiftLeft": return 340;
+        case "ControlLeft": return 341;
+        case "AltLeft": return 342;
+        case "OSLeft": return 343;
+        case "ShiftRight": return 344;
+        case "ControlRight": return 345;
+        case "AltRight": return 346;
+        case "OSRight": return 347;
+        case "ContextMenu": return 348;
+    }
+
+    console.log("Unsupported keyboard key: ", key_code)
+}
+
+function dpi_scale()  {
+    if (high_dpi) {
+        return window.devicePixelRatio || 1.0;
+    } else {
+        return 1.0;
+    }
+}
+
 function texture_size(internalFormat, width, height) {
     if (internalFormat == gl.ALPHA) {
         return width * height;
@@ -263,6 +441,40 @@ function texture_size(internalFormat, width, height) {
 
 var importObject = {
     env: {
+        console_debug: function (ptr) {
+            console.debug(UTF8ToString(ptr));
+        },
+        console_log: function (ptr) {
+            console.log(UTF8ToString(ptr));
+        },
+        console_info: function (ptr) {
+            console.info(UTF8ToString(ptr));
+        },
+        console_warn: function (ptr) {
+            console.warn(UTF8ToString(ptr));
+        },
+        console_error: function (ptr) {
+            console.error(UTF8ToString(ptr));
+        },
+        set_emscripten_shader_hack: function (flag) {
+            emscripten_shaders_hack = flag;
+        },
+        sapp_set_clipboard: function(ptr, len) {
+            clipboard = UTF8ToString(ptr, len);
+        },
+        dpi_scale,
+        rand: function () {
+            return Math.floor(Math.random() * 2147483647);
+        },
+        now: function () {
+            return Date.now() / 1000.0;
+        },
+        canvas_width: function () {
+            return Math.floor(canvas.width);
+        },
+        canvas_height: function () {
+            return Math.floor(canvas.height);
+        },
         glClearDepthf: function (depth) {
             gl.clearDepth(depth);
         },
@@ -480,6 +692,9 @@ var importObject = {
         glDrawArrays: function (mode, first, count) {
             gl.drawArrays(mode, first, count);
         },
+        glDrawBuffers: function (n, bufs) {
+            gl.drawBuffers(getArray(bufs, Int32Array, n));
+        },
         glCreateProgram: function () {
             var id = GL.getNewId(GL.programs);
             var program = gl.createProgram();
@@ -491,6 +706,11 @@ var importObject = {
             GL.validateGLObjectID(GL.programs, program, 'glAttachShader', 'program');
             GL.validateGLObjectID(GL.shaders, shader, 'glAttachShader', 'shader');
             gl.attachShader(GL.programs[program], GL.shaders[shader]);
+        },
+        glDetachShader: function (program, shader) {
+            GL.validateGLObjectID(GL.programs, program, 'glDetachShader', 'program');
+            GL.validateGLObjectID(GL.shaders, shader, 'glDetachShader', 'shader');
+            gl.detachShader(GL.programs[program], GL.shaders[shader]);
         },
         glLinkProgram: function (program) {
             GL.validateGLObjectID(GL.programs, program, 'glLinkProgram', 'program');
@@ -623,7 +843,18 @@ var importObject = {
         glDrawElementsInstanced: function (mode, count, type, indices, primcount) {
             gl.drawElementsInstanced(mode, count, type, indices, primcount);
         },
-        glDeleteShader: function (shader) { gl.deleteShader(shader) },
+        glDeleteShader: function (shader) {
+            var id = GL.shaders[shader];
+            if (id == null) { return }
+            gl.deleteShader(id);
+            GL.shaders[shader] = null
+        },
+        glDeleteProgram: function (program) {
+            var id = GL.programs[program];
+            if (id == null) { return }
+            gl.deleteProgram(id);
+            GL.programs[program] = null
+        },
         glDeleteBuffers: function (n, buffers) {
             for (var i = 0; i < n; i++) {
                 var id = getArray(buffers + i * 4, Uint32Array, 1)[0];
@@ -699,14 +930,299 @@ var importObject = {
         glGenerateMipmap: function (index) {
             gl.generateMipmap(index);
         },
-        sapp_is_fullscreen: function () {
+
+        setup_canvas_size: function(high_dpi) {
+            window.high_dpi = high_dpi;
+            resize(canvas);
+        },
+        run_animation_loop: function (ptr) {
+            canvas.onmousemove = function (event) {
+                var relative_position = mouse_relative_position(event.clientX, event.clientY);
+                var x = relative_position.x;
+                var y = relative_position.y;
+
+                // TODO: do not send mouse_move when cursor is captured
+                wasm_exports.mouse_move(Math.floor(x), Math.floor(y));
+
+                // TODO: check that mouse is captured?
+                if (event.movementX != 0 || event.movementY != 0) {
+                    wasm_exports.raw_mouse_move(Math.floor(event.movementX), Math.floor(event.movementY));
+                }
+            };
+            canvas.onmousedown = function (event) {
+                var relative_position = mouse_relative_position(event.clientX, event.clientY);
+                var x = relative_position.x;
+                var y = relative_position.y;
+
+                var btn = into_sapp_mousebutton(event.button);
+                wasm_exports.mouse_down(x, y, btn);
+            };
+            // SO WEB SO CONSISTENT
+            canvas.addEventListener('wheel',
+                function (event) {
+                    event.preventDefault();
+                    wasm_exports.mouse_wheel(-event.deltaX, -event.deltaY);
+                });
+            canvas.onmouseup = function (event) {
+                var relative_position = mouse_relative_position(event.clientX, event.clientY);
+                var x = relative_position.x;
+                var y = relative_position.y;
+
+                var btn = into_sapp_mousebutton(event.button);
+                wasm_exports.mouse_up(x, y, btn);
+            };
+            canvas.onkeydown = function (event) {
+                var sapp_key_code = into_sapp_keycode(event.code);
+                switch (sapp_key_code) {
+                    //  space, arrows - prevent scrolling of the page
+                    case 32: case 262: case 263: case 264: case 265:
+                    // F1-F10
+                    case 290: case 291: case 292: case 293: case 294: case 295: case 296: case 297: case 298: case 299:
+                    // backspace is Back on Firefox/Windows
+                    case 259:
+                    // tab - for UI
+                    case 258:
+                    // quote and slash are Quick Find on Firefox
+                    case 39: case 47:
+                        event.preventDefault();
+                        break;
+                }
+
+                var modifiers = 0;
+                if (event.ctrlKey) {
+                    modifiers |= SAPP_MODIFIER_CTRL;
+                }
+                if (event.shiftKey) {
+                    modifiers |= SAPP_MODIFIER_SHIFT;
+                }
+                if (event.altKey) {
+                    modifiers |= SAPP_MODIFIER_ALT;
+                }
+                wasm_exports.key_down(sapp_key_code, modifiers, event.repeat);
+                // for "space", "quote", and "slash" preventDefault will prevent
+                // key_press event, so send it here instead
+                if (sapp_key_code == 32 || sapp_key_code == 39 || sapp_key_code == 47) {
+                    wasm_exports.key_press(sapp_key_code);
+                }
+            };
+            canvas.onkeyup = function (event) {
+                var sapp_key_code = into_sapp_keycode(event.code);
+
+                var modifiers = 0;
+                if (event.ctrlKey) {
+                    modifiers |= SAPP_MODIFIER_CTRL;
+                }
+                if (event.shiftKey) {
+                    modifiers |= SAPP_MODIFIER_SHIFT;
+                }
+                if (event.altKey) {
+                    modifiers |= SAPP_MODIFIER_ALT;
+                }
+
+                wasm_exports.key_up(sapp_key_code, modifiers);
+            };
+            canvas.onkeypress = function (event) {
+                var sapp_key_code = into_sapp_keycode(event.code);
+
+                // firefox do not send onkeypress events for ctrl+keys and delete key while chrome do
+                // workaround to make this behavior consistent
+                let chrome_only = sapp_key_code == 261 || event.ctrlKey;
+                if (chrome_only == false) {
+                    wasm_exports.key_press(event.charCode);
+                }
+            };
+
+            canvas.addEventListener("touchstart", function (event) {
+                event.preventDefault();
+
+                for (const touch of event.changedTouches) {
+                    let relative_position = mouse_relative_position(touch.clientX, touch.clientY);
+                    wasm_exports.touch(SAPP_EVENTTYPE_TOUCHES_BEGAN, touch.identifier, relative_position.x, relative_position.y);
+                }
+            });
+            canvas.addEventListener("touchend", function (event) {
+                event.preventDefault();
+
+                for (const touch of event.changedTouches) {
+                    let relative_position = mouse_relative_position(touch.clientX, touch.clientY);
+                    wasm_exports.touch(SAPP_EVENTTYPE_TOUCHES_ENDED, touch.identifier, relative_position.x, relative_position.y);
+                }
+            });
+            canvas.addEventListener("touchcancel", function (event) {
+                event.preventDefault();
+
+                for (const touch of event.changedTouches) {
+                    let relative_position = mouse_relative_position(touch.clientX, touch.clientY);
+                    wasm_exports.touch(SAPP_EVENTTYPE_TOUCHES_CANCELED, touch.identifier, relative_position.x, relative_position.y);
+                }
+            });
+            canvas.addEventListener("touchmove", function (event) {
+                event.preventDefault();
+
+                for (const touch of event.changedTouches) {
+                    let relative_position = mouse_relative_position(touch.clientX, touch.clientY);
+                    wasm_exports.touch(SAPP_EVENTTYPE_TOUCHES_MOVED, touch.identifier, relative_position.x, relative_position.y);
+                }
+            });
+
+            window.onresize = function () {
+                resize(canvas, wasm_exports.resize);
+            };
+            window.addEventListener("copy", function(e) {
+                if (clipboard != null) {
+                    event.clipboardData.setData('text/plain', clipboard);
+                    event.preventDefault();
+                }
+            });
+            window.addEventListener("cut", function(e) {
+                if (clipboard != null) {
+                    event.clipboardData.setData('text/plain', clipboard);
+                    event.preventDefault();
+                }
+            });
+
+            window.addEventListener("paste", function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                var clipboardData = e.clipboardData || window.clipboardData;
+                var pastedData = clipboardData.getData('Text');
+
+                if (pastedData != undefined && pastedData != null && pastedData.length != 0) {
+                    var len = (new TextEncoder().encode(pastedData)).length;
+                    var msg = wasm_exports.allocate_vec_u8(len);
+                    var heap = new Uint8Array(wasm_memory.buffer, msg, len);
+                    stringToUTF8(pastedData, heap, 0, len);
+                    wasm_exports.on_clipboard_paste(msg, len);
+                }
+            });
+
+            window.ondragover = function(e) {
+                e.preventDefault();
+            };
+
+            window.ondrop = async function(e) {
+                e.preventDefault();
+
+                wasm_exports.on_files_dropped_start();
+
+                for (let file of e.dataTransfer.files) {
+                    const nameLen = file.name.length;
+                    const nameVec = wasm_exports.allocate_vec_u8(nameLen);
+                    const nameHeap = new Uint8Array(wasm_memory.buffer, nameVec, nameLen);
+                    stringToUTF8(file.name, nameHeap, 0, nameLen);
+
+                    const fileBuf = await file.arrayBuffer();
+                    const fileLen = fileBuf.byteLength;
+                    const fileVec = wasm_exports.allocate_vec_u8(fileLen);
+                    const fileHeap = new Uint8Array(wasm_memory.buffer, fileVec, fileLen);
+                    fileHeap.set(new Uint8Array(fileBuf), 0);
+
+                    wasm_exports.on_file_dropped(nameVec, nameLen, fileVec, fileLen);
+                }
+
+                wasm_exports.on_files_dropped_finish();
+            };
+
+            let lastFocus = document.hasFocus();
+            var checkFocus = function() {
+                let hasFocus = document.hasFocus();
+                if(lastFocus == hasFocus){
+                    wasm_exports.focus(hasFocus);
+                    lastFocus = hasFocus;
+                }
+            }
+            document.addEventListener("visibilitychange", checkFocus);
+            window.addEventListener("focus", checkFocus);
+            window.addEventListener("blur", checkFocus);
+
+            window.requestAnimationFrame(animation);
+        },
+
+        fs_load_file: function (ptr, len) {
+            var url = UTF8ToString(ptr, len);
+            var file_id = FS.unique_id;
+            FS.unique_id += 1;
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.responseType = 'arraybuffer';
+
+            xhr.onreadystatechange = function() {
+	        // looks like readyState === 4 will be fired on either successful or unsuccessful load:
+		// https://stackoverflow.com/a/19247992
+                if (this.readyState === 4) {
+                    if(this.status === 200) {
+                        var uInt8Array = new Uint8Array(this.response);
+
+                        FS.loaded_files[file_id] = uInt8Array;
+                        wasm_exports.file_loaded(file_id);
+                    } else {
+                        FS.loaded_files[file_id] = null;
+                        wasm_exports.file_loaded(file_id);
+                    }
+                }
+            };
+            xhr.send();
+
+            return file_id;
+        },
+
+        fs_get_buffer_size: function (file_id) {
+            if (FS.loaded_files[file_id] == null) {
+                return -1;
+            } else {
+                return FS.loaded_files[file_id].length;
+            }
+        },
+        fs_take_buffer: function (file_id, ptr, max_length) {
+            var file = FS.loaded_files[file_id];
+            console.assert(file.length <= max_length);
+            var dest = new Uint8Array(wasm_memory.buffer, ptr, max_length);
+            for (var i = 0; i < file.length; i++) {
+                dest[i] = file[i];
+            }
+            delete FS.loaded_files[file_id];
+        },
+        sapp_set_cursor_grab: function (grab) {
+            if (grab) {
+                canvas.requestPointerLock();
+            } else {
+                document.exitPointerLock();
+            }
+        },
+        sapp_set_cursor: function(ptr, len) {
+            canvas.style.cursor = UTF8ToString(ptr, len);
+        },
+        sapp_is_fullscreen: function() {
             let fullscreenElement = document.fullscreenElement;
 
             return fullscreenElement != null && fullscreenElement.id == canvas.id;
+        },
+        sapp_set_fullscreen: function(fullscreen) {
+            if (!fullscreen) {
+                document.exitFullscreen();
+            } else {
+                canvas.requestFullscreen();
+            }
+        },
+        sapp_set_window_size: function(new_width, new_height) {
+            canvas.width = new_width;
+            canvas.height = new_height;
+            resize(canvas, wasm_exports.resize);
         }
     }
 };
 
+
+function register_plugins(plugins) {
+    if (plugins == undefined)
+        return;
+
+    for (var i = 0; i < plugins.length; i++) {
+        if (plugins[i].register_plugin != undefined && plugins[i].register_plugin != null) {
+            plugins[i].register_plugin(importObject);
+        }
+    }
+}
 
 function u32_to_semver(crate_version) {
     let major_version = (crate_version >> 24) & 0xff;
@@ -764,24 +1280,56 @@ function add_missing_functions_stabs(obj) {
 async function load(wasm_path) {
     var req = fetch(wasm_path);
 
-    // register plugins
-    if (!Array.isArray(plugins)) return;
-    for (var i = 0; i < plugins.length; i++) {
-        if (plugins[i].register_plugin != undefined && plugins[i].register_plugin != null) {
-            plugins[i].register_plugin(importObject);
-        }
+    register_plugins(plugins);
+
+    if (typeof WebAssembly.compileStreaming === 'function') {
+        WebAssembly.compileStreaming(req)
+            .then(obj => {
+                add_missing_functions_stabs(obj);
+                return WebAssembly.instantiate(obj, importObject);
+            })
+            .then(
+                obj => {
+                    wasm_memory = obj.exports.memory;
+                    wasm_exports = obj.exports;
+
+                    var crate_version = u32_to_semver(wasm_exports.crate_version());
+                    if (version != crate_version) {
+                        console.error(
+                            "Version mismatch: gl.js version is: " + version +
+                                ", miniquad crate version is: " + crate_version);
+                    }
+                    init_plugins(plugins);
+                    obj.exports.main();
+                })
+            .catch(err => {
+                console.error("WASM failed to load, probably incompatible gl.js version");
+                console.error(err);
+            })
+    } else {
+        req
+            .then(function (x) { return x.arrayBuffer(); })
+            .then(function (bytes) { return WebAssembly.compile(bytes); })
+            .then(function (obj) {
+                add_missing_functions_stabs(obj);
+                return WebAssembly.instantiate(obj, importObject);
+            })
+            .then(function (obj) {
+                wasm_memory = obj.exports.memory;
+                wasm_exports = obj.exports;
+
+                var crate_version = u32_to_semver(wasm_exports.crate_version());
+                if (version != crate_version) {
+                    console.error(
+                        "Version mismatch: gl.js version is: " + version +
+                            ", rust sapp-wasm crate version is: " + crate_version);
+                }
+                init_plugins(plugins);
+                obj.exports.main();
+            })
+            .catch(err => {
+                console.error("WASM failed to load, probably incompatible gl.js version");
+                console.error(err);
+            });
     }
-
-    // Compile and instantiate the module
-    let module = await WebAssembly.compileStreaming(req);
-    add_missing_functions_stabs(module);
-    let instance = await WebAssembly.instantiate(module, importObject);
-
-    // Get the exports
-    wasm_memory = instance.exports.memory;
-    wasm_exports = instance.exports;
-
-    // start
-    init_plugins(plugins);
-    wasm_exports.main();
 }
