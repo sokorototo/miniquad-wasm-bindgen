@@ -171,25 +171,22 @@ impl MacosDisplay {
 		}
 	}
 
-    fn process_request(&mut self, request: Request) {
-        use Request::*;
-        unsafe {
-            match request {
-                SetCursorGrab(grab) => self.set_cursor_grab(self.window, grab),
-                ShowMouse(show) => self.show_mouse(show),
-                SetMouseCursor(icon) => self.set_mouse_cursor(icon),
-                SetWindowSize {
-                    new_width,
-                    new_height,
-                } => self.set_window_size(new_width as _, new_height as _),
-                SetFullscreen(fullscreen) => self.set_fullscreen(fullscreen),
-                SetWindowPosition{new_x, new_y} => {
-                    eprintln!("Not implemented for macos");
-                }
-                _ => {}
-            }
-        }
-    }
+	fn process_request(&mut self, request: Request) {
+		use Request::*;
+		unsafe {
+			match request {
+				SetCursorGrab(grab) => self.set_cursor_grab(self.window, grab),
+				ShowMouse(show) => self.show_mouse(show),
+				SetMouseCursor(icon) => self.set_mouse_cursor(icon),
+				SetWindowSize { new_width, new_height } => self.set_window_size(new_width as _, new_height as _),
+				SetFullscreen(fullscreen) => self.set_fullscreen(fullscreen),
+				SetWindowPosition { new_x, new_y } => {
+					eprintln!("Not implemented for macos");
+				}
+				_ => {}
+			}
+		}
+	}
 }
 
 #[derive(Default)]

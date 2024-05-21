@@ -1125,12 +1125,12 @@ impl RenderingBackend for MetalContext {
 		}
 	}
 
-    fn delete_shader(&mut self, shader: ShaderId) {
-        // TODO: place holder
-    }
-    fn delete_pipeline(&mut self, pipeline: Pipeline) {
-        // TODO: place holder
-    }
+	fn delete_shader(&mut self, shader: ShaderId) {
+		// TODO: place holder
+	}
+	fn delete_pipeline(&mut self, pipeline: Pipeline) {
+		// TODO: place holder
+	}
 
 	fn commit_frame(&mut self) {
 		unsafe {

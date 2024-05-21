@@ -21,43 +21,40 @@ pub use native::gl;
 
 #[derive(Clone)]
 pub(crate) struct ResourceManager<T> {
-    id: usize,
-    resources: HashMap<usize, T>,
+	id: usize,
+	resources: HashMap<usize, T>,
 }
 
 impl<T> Default for ResourceManager<T> {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            resources: HashMap::new(),
-        }
-    }
+	fn default() -> Self {
+		Self { id: 0, resources: HashMap::new() }
+	}
 }
 
 impl<T> ResourceManager<T> {
-    pub fn add(&mut self, resource: T) -> usize {
-        self.resources.insert(self.id, resource);
-        self.id += 1;
-        self.id - 1
-    }
+	pub fn add(&mut self, resource: T) -> usize {
+		self.resources.insert(self.id, resource);
+		self.id += 1;
+		self.id - 1
+	}
 
-    pub fn remove(&mut self, id: usize) {
-        // Let it crash if the resource is not found
-        self.resources.remove(&id).unwrap();
-    }
+	pub fn remove(&mut self, id: usize) {
+		// Let it crash if the resource is not found
+		self.resources.remove(&id).unwrap();
+	}
 }
 
 impl<T> Index<usize> for ResourceManager<T> {
-    type Output = T;
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.resources[&index]
-    }
+	type Output = T;
+	fn index(&self, index: usize) -> &Self::Output {
+		&self.resources[&index]
+	}
 }
 
 impl<T> IndexMut<usize> for ResourceManager<T> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        self.resources.get_mut(&index).unwrap()
-    }
+	fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+		self.resources.get_mut(&index).unwrap()
+	}
 }
 
 pub mod date {
@@ -178,18 +175,18 @@ pub mod window {
 		d.native_requests.send(native::Request::SetWindowSize { new_width, new_height }).unwrap();
 	}
 
-    pub fn set_window_position(new_x: u32, new_y: u32) {
-        let mut d = native_display().lock().unwrap();
-        d.native_requests.send(native::Request::SetWindowPosition { new_x, new_y });
-    }
+	pub fn set_window_position(new_x: u32, new_y: u32) {
+		let d = native_display().lock().unwrap();
+		d.native_requests.send(native::Request::SetWindowPosition { new_x, new_y }).unwrap();
+	}
 
-    /// Get the position of the window.
-    /// TODO: implement for other platforms
-    #[cfg(target_os = "windows")]
-    pub fn get_window_position() -> (u32, u32) {
-        let mut d = native_display().lock().unwrap();
-        d.screen_position
-    }
+	/// Get the position of the window.
+	/// TODO: implement for other platforms
+	#[cfg(target_os = "windows")]
+	pub fn get_window_position() -> (u32, u32) {
+		let d = native_display().lock().unwrap();
+		d.screen_position
+	}
 
 	pub fn set_fullscreen(fullscreen: bool) {
 		let d = native_display().lock().unwrap();

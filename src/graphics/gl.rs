@@ -472,10 +472,10 @@ fn load_shader_internal(vertex_shader: &str, fragment_shader: &str, meta: Shader
 		glAttachShader(program, fragment_shader);
 		glLinkProgram(program);
 
-        // delete no longer used shaders
-        glDetachShader(program, vertex_shader);
-        glDeleteShader(vertex_shader);
-        glDeleteShader(fragment_shader);
+		// delete no longer used shaders
+		glDetachShader(program, vertex_shader);
+		glDeleteShader(vertex_shader);
+		glDeleteShader(fragment_shader);
 
 		let mut link_status = 0;
 		glGetProgramiv(program, GL_LINK_STATUS, &mut link_status as *mut _);
@@ -694,53 +694,44 @@ impl RenderingBackend for GlContext {
 			glsl_support.v130 = true;
 		}
 
-        ContextInfo {
-            backend: Backend::OpenGl,
-            gl_version_string,
-            glsl_support,
-            features: self.features.clone(),
-        }
-    }
-    fn new_shader(
-        &mut self,
-        shader: ShaderSource,
-        meta: ShaderMeta,
-    ) -> Result<ShaderId, ShaderError> {
-        let (fragment, vertex) = match shader {
-            ShaderSource::Glsl { fragment, vertex } => (fragment, vertex),
-            _ => panic!("Metal source on OpenGl context"),
-        };
-        let shader = load_shader_internal(vertex, fragment, meta)?;
-        Ok(ShaderId(self.shaders.add(shader)))
-    }
+		ContextInfo {
+			backend: Backend::OpenGl,
+			gl_version_string,
+			glsl_support,
+			features: self.features.clone(),
+		}
+	}
+	fn new_shader(&mut self, shader: ShaderSource, meta: ShaderMeta) -> Result<ShaderId, ShaderError> {
+		let (fragment, vertex) = match shader {
+			ShaderSource::Glsl { fragment, vertex } => (fragment, vertex),
+			_ => panic!("Metal source on OpenGl context"),
+		};
+		let shader = load_shader_internal(vertex, fragment, meta)?;
+		Ok(ShaderId(self.shaders.add(shader)))
+	}
 
-    fn new_texture(
-        &mut self,
-        access: TextureAccess,
-        source: TextureSource,
-        params: TextureParams,
-    ) -> TextureId {
-        let texture = Texture::new(self, access, source, params);
-        self.textures.0.push(texture);
-        TextureId(TextureIdInner::Managed(self.textures.0.len() - 1))
-    }
-    fn delete_texture(&mut self, texture: TextureId) {
-        let t = self.textures.get(texture);
-        t.delete();
-    }
+	fn new_texture(&mut self, access: TextureAccess, source: TextureSource, params: TextureParams) -> TextureId {
+		let texture = Texture::new(self, access, source, params);
+		self.textures.0.push(texture);
+		TextureId(TextureIdInner::Managed(self.textures.0.len() - 1))
+	}
+	fn delete_texture(&mut self, texture: TextureId) {
+		let t = self.textures.get(texture);
+		t.delete();
+	}
 
-    fn delete_shader(&mut self, program: ShaderId) {
-        unsafe { glDeleteProgram(self.shaders[program.0].program) };
-        self.shaders.remove(program.0);
-        self.cache.cur_pipeline = None;
-    }
+	fn delete_shader(&mut self, program: ShaderId) {
+		unsafe { glDeleteProgram(self.shaders[program.0].program) };
+		self.shaders.remove(program.0);
+		self.cache.cur_pipeline = None;
+	}
 
-    fn delete_pipeline(&mut self, pipeline: Pipeline) {
-        self.pipelines.remove(pipeline.0);
-    }
+	fn delete_pipeline(&mut self, pipeline: Pipeline) {
+		self.pipelines.remove(pipeline.0);
+	}
 
-    fn texture_set_wrap(&mut self, texture: TextureId, wrap_x: TextureWrap, wrap_y: TextureWrap) {
-        let t = self.textures.get(texture);
+	fn texture_set_wrap(&mut self, texture: TextureId, wrap_x: TextureWrap, wrap_y: TextureWrap) {
+		let t = self.textures.get(texture);
 
 		self.cache.store_texture_binding(0);
 		self.cache.bind_texture(0, t.params.kind.into(), t.raw);
@@ -865,26 +856,26 @@ impl RenderingBackend for GlContext {
 			depth_texture: depth_img,
 		};
 
-        RenderPass(self.passes.add(pass))
-    }
-    fn render_pass_color_attachments(&self, render_pass: RenderPass) -> &[TextureId] {
-        &self.passes[render_pass.0].color_textures
-    }
-    fn delete_render_pass(&mut self, render_pass: RenderPass) {
-        let pass_id = render_pass.0;
+		RenderPass(self.passes.add(pass))
+	}
+	fn render_pass_color_attachments(&self, render_pass: RenderPass) -> &[TextureId] {
+		&self.passes[render_pass.0].color_textures
+	}
+	fn delete_render_pass(&mut self, render_pass: RenderPass) {
+		let pass_id = render_pass.0;
 
-        let render_pass = &self.passes[pass_id];
+		let render_pass = &self.passes[pass_id];
 
-        unsafe { glDeleteFramebuffers(1, &render_pass.gl_fb as *const _) }
+		unsafe { glDeleteFramebuffers(1, &render_pass.gl_fb as *const _) }
 
-        for color_texture in &render_pass.color_textures {
-            self.textures.get(*color_texture).delete();
-        }
-        if let Some(depth_texture) = render_pass.depth_texture {
-            self.textures.get(depth_texture).delete();
-        }
-        self.passes.remove(pass_id);
-    }
+		for color_texture in &render_pass.color_textures {
+			self.textures.get(*color_texture).delete();
+		}
+		if let Some(depth_texture) = render_pass.depth_texture {
+			self.textures.get(depth_texture).delete();
+		}
+		self.passes.remove(pass_id);
+	}
 
 	fn new_pipeline(&mut self, buffer_layout: &[BufferLayout], attributes: &[VertexAttribute], shader: ShaderId, params: PipelineParams) -> Pipeline {
 		#[derive(Clone, Copy, Default)]
@@ -967,8 +958,8 @@ impl RenderingBackend for GlContext {
 
 		let pipeline = PipelineInternal { layout: vertex_layout, shader, params };
 
-        Pipeline(self.pipelines.add(pipeline))
-    }
+		Pipeline(self.pipelines.add(pipeline))
+	}
 
 	fn apply_pipeline(&mut self, pipeline: &Pipeline) {
 		self.cache.cur_pipeline = Some(*pipeline);
@@ -1039,15 +1030,15 @@ impl RenderingBackend for GlContext {
 			self.cache.restore_buffer_binding(gl_target);
 		}
 
-        let buffer = Buffer {
-            gl_buf,
-            buffer_type: type_,
-            size,
-            index_type,
-        };
+		let buffer = Buffer {
+			gl_buf,
+			buffer_type: type_,
+			size,
+			index_type,
+		};
 
-        BufferId(self.buffers.add(buffer))
-    }
+		BufferId(self.buffers.add(buffer))
+	}
 
 	fn buffer_update(&mut self, buffer: BufferId, data: BufferSource) {
 		let data = match data {
@@ -1078,19 +1069,19 @@ impl RenderingBackend for GlContext {
 		self.buffers[buffer.0].size
 	}
 
-    /// Delete GPU buffer, leaving handle unmodified.
-    ///
-    /// More high-level code on top of miniquad probably is going to call this in Drop implementation of some
-    /// more RAII buffer object.
-    ///
-    /// There is no protection against using deleted textures later. However its not an UB in OpenGl and thats why
-    /// this function is not marked as unsafe
-    fn delete_buffer(&mut self, buffer: BufferId) {
-        unsafe { glDeleteBuffers(1, &self.buffers[buffer.0].gl_buf as *const _) }
-        self.cache.clear_buffer_bindings();
-        self.cache.clear_vertex_attributes();
-        self.buffers.remove(buffer.0);
-    }
+	/// Delete GPU buffer, leaving handle unmodified.
+	///
+	/// More high-level code on top of miniquad probably is going to call this in Drop implementation of some
+	/// more RAII buffer object.
+	///
+	/// There is no protection against using deleted textures later. However its not an UB in OpenGl and thats why
+	/// this function is not marked as unsafe
+	fn delete_buffer(&mut self, buffer: BufferId) {
+		unsafe { glDeleteBuffers(1, &self.buffers[buffer.0].gl_buf as *const _) }
+		self.cache.clear_buffer_bindings();
+		self.cache.clear_vertex_attributes();
+		self.buffers.remove(buffer.0);
+	}
 
 	/// Set a new viewport rectangle.
 	/// Should be applied after begin_pass.

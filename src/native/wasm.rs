@@ -167,6 +167,15 @@ fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static
 				// emit resize event
 				event_handler.resize_event(new_width as _, new_width as _);
 			}
+			Request::SetWindowPosition { new_x, new_y } => {
+				main_canvas.style().set_property("left", &format!("{}px", new_x)).unwrap();
+				main_canvas.style().set_property("top", &format!("{}px", new_y)).unwrap();
+
+				{
+					let mut d = crate::native_display().lock().unwrap();
+					d.screen_position = (new_x as _, new_y as _);
+				}
+			}
 			_ => {}
 		}
 	}

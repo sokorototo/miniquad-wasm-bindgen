@@ -345,6 +345,7 @@ mod counter {
 		}
 	}
 
+	#[allow(unused)]
 	pub(crate) fn get() -> u32 {
 		unsafe { COUNTER }
 	}
@@ -573,6 +574,17 @@ pub unsafe fn glAttachShader(program_idx: GLuint, shader_idx: GLuint) {
 	gl.attach_shader(program, shader);
 }
 
+pub unsafe fn glDetachShader(program: GLuint, shader: GLuint) {
+	let shader = SHADERS.get(&shader).unwrap_throw();
+	let program = PROGRAMS.get(&program).unwrap_throw();
+	get_gl().detach_shader(program, shader);
+}
+
+pub unsafe fn glDeleteShader(shader: GLuint) {
+	let shader = SHADERS.remove(&shader);
+	get_gl().delete_shader(shader.as_ref());
+}
+
 pub unsafe fn glGetAttribLocation(program: GLuint, name: *const GLchar) -> GLint {
 	let program = PROGRAMS.get(&program).unwrap_throw();
 	let name = std::ffi::CStr::from_ptr(name).to_str().unwrap_throw();
@@ -731,6 +743,11 @@ pub unsafe fn glLinkProgram(program_idx: GLuint) {
 
 	// insert
 	PROGRAM_INFOS.insert(program_idx, program_info);
+}
+
+pub unsafe fn glDeleteProgram(program: GLuint) {
+	let program = PROGRAMS.remove(&program);
+	get_gl().delete_program(program.as_ref());
 }
 
 // SAFETY: Webassembly is single-threaded
@@ -1129,12 +1146,9 @@ pub fn glClearStencil(s: GLint) {
 // 	pub fn glCompressedTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
 // 	pub fn glCopyTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, x: GLint, y: GLint, width: GLsizei, height: GLsizei, border: GLint);
 // 	pub fn glCopyTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, x: GLint, y: GLint, width: GLsizei, height: GLsizei);
-// 	pub fn glDeleteProgram(program: GLuint);
 // 	pub fn glDeleteRenderbuffers(n: GLsizei, renderbuffers: *const GLuint);
-// 	pub fn glDeleteShader(shader: GLuint);
 // 	pub fn glDepthMask(flag: GLboolean);
 // 	pub fn glDepthRangef(n: GLfloat, f: GLfloat);
-// 	pub fn glDetachShader(program: GLuint, shader: GLuint);
 // 	pub fn glDrawArrays(mode: GLenum, first: GLint, count: GLsizei);
 // 	pub fn glDrawElements(mode: GLenum, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void);
 // 	pub fn glFinish();
