@@ -233,10 +233,12 @@ fn init_mouse_events(canvas: &HtmlCanvasElement) {
 
 		let button = match ev.button() {
 			0 => crate::MouseButton::Left,
-			1 => crate::MouseButton::Right,
-			2 => crate::MouseButton::Middle,
+			1 => crate::MouseButton::Middle,
+			2 => crate::MouseButton::Right,
 			n => crate::MouseButton::Other(n as _),
 		};
+
+		web_sys::console::log_1(&ev);
 
 		event_handler.mouse_button_down_event(button, x, y)
 	});
@@ -253,8 +255,8 @@ fn init_mouse_events(canvas: &HtmlCanvasElement) {
 
 		let button = match ev.button() {
 			0 => crate::MouseButton::Left,
-			1 => crate::MouseButton::Right,
-			2 => crate::MouseButton::Middle,
+			1 => crate::MouseButton::Middle,
+			2 => crate::MouseButton::Right,
 			n => crate::MouseButton::Other(n as _),
 		};
 
