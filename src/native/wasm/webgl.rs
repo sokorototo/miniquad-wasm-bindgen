@@ -601,26 +601,28 @@ static mut UNIFORMS: BTreeMap<u32, WebGlUniformLocation> = BTreeMap::new();
 
 pub unsafe fn glGetUniformLocation(program: GLuint, name: *const GLchar) -> GLint {
 	// If user passed an array accessor "[index]", parse the array index off the accessor.
-	let name = std::ffi::CStr::from_ptr(name).to_str().unwrap_throw();
-	let mut array_index = None;
+	let mut name = std::ffi::CStr::from_ptr(name).to_str().unwrap_throw();
+	let mut array_index = 0;
 
 	// parse array index
 	if name.ends_with(']') {
-		let left_brace = name.rfind('[').unwrap_throw();
+		let left_brace_idx = name.rfind('[').unwrap_throw();
 
-		if left_brace != name.len() - 2 {
-			// input is "name[index]"
-			array_index = Some(name[left_brace + 1..name.len() - 1].parse::<usize>().unwrap_throw());
+		if left_brace_idx != name.len() - 2 {
+			// input is name[..]
+			array_index = name[left_brace_idx + 1..name.len() - 1].parse::<usize>().unwrap_throw();
 		};
+		name = &name[..left_brace_idx];
 	}
 
 	// get uniform location
 	let Some(program_info) = PROGRAM_INFOS.get(&program) else { return -1 };
-	if let Some((info, uniform_idx)) = program_info.uniforms.get(name) {
-		if array_index.is_some() && array_index.map(|a| a < info.size() as _).unwrap_or(false) {
-			return *uniform_idx as GLint + array_index.unwrap_or(0) as GLint;
-		}
-	};
+	let Some((info, uniform_idx)) = program_info.uniforms.get(name) else { return -1 };
+
+	// check if array index is within bounds
+	if array_index < info.size() as usize {
+		return *uniform_idx as GLint + array_index as GLint;
+	}
 
 	-1 // Unable to find uniform
 }
@@ -718,12 +720,12 @@ pub unsafe fn glLinkProgram(program_idx: GLuint) {
 
 		// If we are dealing with an array, e.g. vec4 foo[3], strip off the array index part to canonicalize that "foo", "foo[]",
 		// and "foo[0]" will mean the same. Loop below will populate foo[1] and foo[2].
-		if &name[..name.len() - 1] == "]" {
+		if name.ends_with(']') {
 			let slice = name.rfind('[').unwrap_throw();
 			name.truncate(slice);
 		}
 
-		// Optimize memory usage slightly: If we have an array of uniforms, e.g. 'vec3 colors[3];', then
+		// Optimize usage slightly: If we have an array of uniforms, e.g. 'vec3 colors[3];', then
 		// only store the string 'colors' in utable, and 'colors[0]', 'colors[1]' and 'colors[2]' will be parsed as 'colors'+i.
 		// Note that for the GL.uniforms table, we still need to fetch the all WebGLUniformLocations for all the indices.
 		if let Some(loc) = gl.get_uniform_location(program, &name) {

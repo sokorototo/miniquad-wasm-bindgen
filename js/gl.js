@@ -196,8 +196,6 @@ var GL = {
             maxUniformLength: 0, // This is eagerly computed below, since we already enumerate all uniforms anyway.
         };
 
-        var utable = ptable.uniforms;
-
         // A program's uniform table maps the string name of an uniform to an integer location of that uniform.
         // The global GL.uniforms map maps integer locations to WebGLUniformLocations.
         var numUniforms = gl.getProgramParameter(program, 0x8B86/*GL_ACTIVE_UNIFORMS*/);
@@ -214,12 +212,12 @@ var GL = {
             }
 
             // Optimize memory usage slightly: If we have an array of uniforms, e.g. 'vec3 colors[3];', then
-            // only store the string 'colors' in utable, and 'colors[0]', 'colors[1]' and 'colors[2]' will be parsed as 'colors'+i.
+            // only store the string 'colors' in ptable.uniforms, and 'colors[0]', 'colors[1]' and 'colors[2]' will be parsed as 'colors'+i.
             // Note that for the GL.uniforms table, we still need to fetch the all WebGLUniformLocations for all the indices.
             var loc = gl.getUniformLocation(program, name);
             if (loc) {
                 var id = GL.getNewId(GL.uniforms);
-                utable[name] = [active_info.size, id];
+                ptable.uniforms[name] = [active_info.size, id];
                 GL.uniforms[id] = loc;
 
                 for (var j = 1; j < active_info.size; ++j) {
@@ -418,7 +416,7 @@ function into_sapp_keycode(key_code) {
     console.log("Unsupported keyboard key: ", key_code)
 }
 
-function dpi_scale()  {
+function dpi_scale() {
     if (high_dpi) {
         return window.devicePixelRatio || 1.0;
     } else {
@@ -459,7 +457,7 @@ var importObject = {
         set_emscripten_shader_hack: function (flag) {
             emscripten_shaders_hack = flag;
         },
-        sapp_set_clipboard: function(ptr, len) {
+        sapp_set_clipboard: function (ptr, len) {
             clipboard = UTF8ToString(ptr, len);
         },
         dpi_scale,
@@ -623,13 +621,16 @@ var importObject = {
             // If user passed an array accessor "[index]", parse the array index off the accessor.
             if (name[name.length - 1] == ']') {
                 var leftBrace = name.lastIndexOf('[');
-                arrayIndex = name[leftBrace + 1] != ']' ? parseInt(name.slice(leftBrace + 1)) : 0; // "index]", parseInt will ignore the ']' at the end; but treat "foo[]" as "foo[0]"
+                if (name[leftBrace + 1] != ']') { // not uniform[]
+                    arrayIndex = parseInt(name.slice(leftBrace + 1));
+                }
+
                 name = name.slice(0, leftBrace);
             }
 
-            var uniformInfo = GL.programInfos[program] && GL.programInfos[program].uniforms[name]; // returns pair [ dimension_of_uniform_array, uniform_location ]
-            if (uniformInfo && arrayIndex >= 0 && arrayIndex < uniformInfo[0]) { // Check if user asked for an out-of-bounds element, i.e. for 'vec4 colors[3];' user could ask for 'colors[10]' which should return -1.
-                return uniformInfo[1] + arrayIndex;
+            let [info, uniformIdx] = GL.programInfos[program] && GL.programInfos[program].uniforms[name]; // returns pair [ dimension_of_uniform_array, uniform_location ]
+            if (uniformInfo && arrayIndex >= 0 && arrayIndex < info) { // Check if user asked for an out-of-bounds element, i.e. for 'vec4 colors[3];' user could ask for 'colors[10]' which should return -1.
+                return uniformIdx + arrayIndex;
             } else {
                 return -1;
             }
@@ -931,7 +932,7 @@ var importObject = {
             gl.generateMipmap(index);
         },
 
-        setup_canvas_size: function(high_dpi) {
+        setup_canvas_size: function (high_dpi) {
             window.high_dpi = high_dpi;
             resize(canvas);
         },
@@ -1068,20 +1069,20 @@ var importObject = {
             window.onresize = function () {
                 resize(canvas, wasm_exports.resize);
             };
-            window.addEventListener("copy", function(e) {
+            window.addEventListener("copy", function (e) {
                 if (clipboard != null) {
                     event.clipboardData.setData('text/plain', clipboard);
                     event.preventDefault();
                 }
             });
-            window.addEventListener("cut", function(e) {
+            window.addEventListener("cut", function (e) {
                 if (clipboard != null) {
                     event.clipboardData.setData('text/plain', clipboard);
                     event.preventDefault();
                 }
             });
 
-            window.addEventListener("paste", function(e) {
+            window.addEventListener("paste", function (e) {
                 e.stopPropagation();
                 e.preventDefault();
                 var clipboardData = e.clipboardData || window.clipboardData;
@@ -1096,11 +1097,11 @@ var importObject = {
                 }
             });
 
-            window.ondragover = function(e) {
+            window.ondragover = function (e) {
                 e.preventDefault();
             };
 
-            window.ondrop = async function(e) {
+            window.ondrop = async function (e) {
                 e.preventDefault();
 
                 wasm_exports.on_files_dropped_start();
@@ -1124,9 +1125,9 @@ var importObject = {
             };
 
             let lastFocus = document.hasFocus();
-            var checkFocus = function() {
+            var checkFocus = function () {
                 let hasFocus = document.hasFocus();
-                if(lastFocus == hasFocus){
+                if (lastFocus == hasFocus) {
                     wasm_exports.focus(hasFocus);
                     lastFocus = hasFocus;
                 }
@@ -1146,11 +1147,11 @@ var importObject = {
             xhr.open('GET', url, true);
             xhr.responseType = 'arraybuffer';
 
-            xhr.onreadystatechange = function() {
-	        // looks like readyState === 4 will be fired on either successful or unsuccessful load:
-		// https://stackoverflow.com/a/19247992
+            xhr.onreadystatechange = function () {
+                // looks like readyState === 4 will be fired on either successful or unsuccessful load:
+                // https://stackoverflow.com/a/19247992
                 if (this.readyState === 4) {
-                    if(this.status === 200) {
+                    if (this.status === 200) {
                         var uInt8Array = new Uint8Array(this.response);
 
                         FS.loaded_files[file_id] = uInt8Array;
@@ -1189,22 +1190,22 @@ var importObject = {
                 document.exitPointerLock();
             }
         },
-        sapp_set_cursor: function(ptr, len) {
+        sapp_set_cursor: function (ptr, len) {
             canvas.style.cursor = UTF8ToString(ptr, len);
         },
-        sapp_is_fullscreen: function() {
+        sapp_is_fullscreen: function () {
             let fullscreenElement = document.fullscreenElement;
 
             return fullscreenElement != null && fullscreenElement.id == canvas.id;
         },
-        sapp_set_fullscreen: function(fullscreen) {
+        sapp_set_fullscreen: function (fullscreen) {
             if (!fullscreen) {
                 document.exitFullscreen();
             } else {
                 canvas.requestFullscreen();
             }
         },
-        sapp_set_window_size: function(new_width, new_height) {
+        sapp_set_window_size: function (new_width, new_height) {
             canvas.width = new_width;
             canvas.height = new_height;
             resize(canvas, wasm_exports.resize);
@@ -1297,7 +1298,7 @@ async function load(wasm_path) {
                     if (version != crate_version) {
                         console.error(
                             "Version mismatch: gl.js version is: " + version +
-                                ", miniquad crate version is: " + crate_version);
+                            ", miniquad crate version is: " + crate_version);
                     }
                     init_plugins(plugins);
                     obj.exports.main();
@@ -1322,7 +1323,7 @@ async function load(wasm_path) {
                 if (version != crate_version) {
                     console.error(
                         "Version mismatch: gl.js version is: " + version +
-                            ", rust sapp-wasm crate version is: " + crate_version);
+                        ", rust sapp-wasm crate version is: " + crate_version);
                 }
                 init_plugins(plugins);
                 obj.exports.main();

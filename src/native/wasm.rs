@@ -66,12 +66,15 @@ where
 	webgl_attributes.stencil(true);
 
 	// setup webgl2 context
-	let gl = main_canvas
-		.get_context_with_context_options("webgl2", &webgl_attributes.into())
-		.unwrap_throw()
-		.unwrap_throw()
-		.dyn_into::<WebGl2RenderingContext>()
-		.unwrap_throw();
+	let gl = unsafe {
+		main_canvas
+			.get_context_with_context_options("webgl2", &webgl_attributes.into())
+			.unwrap_unchecked()
+			.unwrap_unchecked()
+			.dyn_into::<WebGl2RenderingContext>()
+			.unwrap_unchecked()
+	};
+
 	webgl::set_gl(gl);
 
 	// setup requests channel

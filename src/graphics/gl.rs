@@ -706,6 +706,7 @@ impl RenderingBackend for GlContext {
 			ShaderSource::Glsl { fragment, vertex } => (fragment, vertex),
 			_ => panic!("Metal source on OpenGl context"),
 		};
+
 		let shader = load_shader_internal(vertex, fragment, meta)?;
 		Ok(ShaderId(self.shaders.add(shader)))
 	}
