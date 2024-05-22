@@ -16,7 +16,7 @@ struct Stage {
 	pipeline: Pipeline,
 	bindings: Bindings,
 	start_time: f64,
-	last_frame: f64,
+	then: f64,
 	uniforms: shader::Uniforms,
 	blobs_velocities: [(f32, f32); 32],
 	ctx: Box<dyn RenderingBackend>,
@@ -78,7 +78,7 @@ impl Stage {
 			start_time: time,
 			uniforms,
 			blobs_velocities: [(0., 0.); 32],
-			last_frame: time,
+			then: time,
 			ctx,
 		}
 	}
@@ -86,9 +86,8 @@ impl Stage {
 
 impl EventHandler for Stage {
 	fn update(&mut self) {
-		let time = miniquad_wasm_bindgen::date::now();
-		let delta = (time - self.last_frame) as f32;
-		self.last_frame = time;
+		let now = miniquad_wasm_bindgen::date::now();
+		let delta = (now - self.then) as f32;
 
 		for i in 1..self.uniforms.blobs_count as usize {
 			self.uniforms.blobs_positions[i].0 += self.blobs_velocities[i].0 * delta * 0.1;
@@ -101,6 +100,8 @@ impl EventHandler for Stage {
 				self.blobs_velocities[i].1 *= -1.;
 			}
 		}
+
+		self.then = now;
 	}
 
 	fn mouse_motion_event(&mut self, x: f32, y: f32) {
@@ -116,7 +117,7 @@ impl EventHandler for Stage {
 
 		let (w, h) = window::screen_size();
 		let (x, y) = (x / w, 1. - y / h);
-		let (dx, dy) = (quad_rand::gen_range(-1., 1.), quad_rand::gen_range(-1., 1.));
+		let (dx, dy) = (rand(-1.0, 1.0), rand(-1.0, 1.0));
 
 		self.uniforms.blobs_positions[self.uniforms.blobs_count as usize] = (x, y);
 		self.blobs_velocities[self.uniforms.blobs_count as usize] = (dx, dy);
@@ -135,6 +136,10 @@ impl EventHandler for Stage {
 
 		self.ctx.commit_frame();
 	}
+}
+
+fn rand(from: f32, to: f32) -> f32 {
+	miniquad_wasm_bindgen::date::now().fract().sin() as f32 * (to - from) + from
 }
 
 fn main() {

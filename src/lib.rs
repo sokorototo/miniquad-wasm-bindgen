@@ -67,7 +67,7 @@ pub mod date {
 
 	#[cfg(target_arch = "wasm32")]
 	pub fn now() -> f64 {
-		web_sys::js_sys::Date::now()
+		web_sys::js_sys::Date::now() / 1000.0
 	}
 }
 

@@ -19,7 +19,7 @@ categories = ["rendering::graphics-api"]
 
 [[bin]]
 name = "web"
-path = "examples/mandelbrot.rs"
+path = "examples/blobs.rs"
 
 [features]
 log-impl = []
@@ -103,4 +103,3 @@ features = [
 
 [dev-dependencies]
 glam = { version = "0.27.0", features = ["scalar-math"] }
-quad-rand = "0.2.1"
