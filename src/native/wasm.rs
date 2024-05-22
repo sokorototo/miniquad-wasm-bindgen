@@ -55,7 +55,7 @@ where
 	let dpi = get_dpi_scale(high_dpi) as i32;
 
 	main_canvas.set_width((conf.window_width * dpi) as u32);
-	main_canvas.set_height((conf.window_width * dpi) as u32);
+	main_canvas.set_height((conf.window_height * dpi) as u32);
 	main_canvas.style().set_property("width", &format!("{}px", conf.window_width)).unwrap();
 	main_canvas.style().set_property("height", &format!("{}px", conf.window_height)).unwrap();
 	main_canvas.focus().unwrap();
@@ -271,15 +271,22 @@ fn init_mouse_events(canvas: &HtmlCanvasElement) {
 		event_handler.mouse_wheel_event(x, y);
 	});
 
+	let context_menu: Closure<dyn Fn(_) -> bool> = Closure::new(|ev: MouseEvent| {
+		ev.prevent_default();
+		false
+	});
+
 	let mouse_down_fn_ref = mouse_down_closure.as_ref().unchecked_ref();
 	let mouse_move_ref = mouse_move_closure.as_ref().unchecked_ref();
 	let mouse_up_fn_ref = mouse_up_closure.as_ref().unchecked_ref();
 	let mouse_wheel_fn_ref = mouse_wheel_closure.as_ref().unchecked_ref();
+	let context_menu_fn_ref = context_menu.as_ref().unchecked_ref();
 
 	canvas.add_event_listener_with_callback("mousemove", mouse_move_ref).unwrap_throw();
 	canvas.add_event_listener_with_callback("mousedown", mouse_down_fn_ref).unwrap_throw();
 	canvas.add_event_listener_with_callback("mouseup", mouse_up_fn_ref).unwrap_throw();
 	canvas.add_event_listener_with_callback("wheel", mouse_wheel_fn_ref).unwrap_throw();
+	canvas.add_event_listener_with_callback("contextmenu", context_menu_fn_ref).unwrap_throw();
 
 	// the idea is that we let JS take control of memory management
 	// since this function is an event listener, it won't be GC'd by Javascript
@@ -288,6 +295,7 @@ fn init_mouse_events(canvas: &HtmlCanvasElement) {
 	mouse_move_closure.forget();
 	mouse_up_closure.forget();
 	mouse_wheel_closure.forget();
+	context_menu.forget();
 }
 
 fn init_keyboard_events(canvas: &HtmlCanvasElement) {

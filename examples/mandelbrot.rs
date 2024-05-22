@@ -195,7 +195,7 @@ impl EventHandler for Mandelbrot {
 }
 
 fn main() {
-	miniquad_wasm_bindgen::start(Conf::default(), || Box::new(Mandelbrot::new()));
+	miniquad_wasm_bindgen::start(Conf { high_dpi: true, ..Default::default() }, || Box::new(Mandelbrot::new()));
 }
 
 const SHADER_VERTEX: &str = r#"#version 100
