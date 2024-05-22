@@ -238,8 +238,6 @@ fn init_mouse_events(canvas: &HtmlCanvasElement) {
 			n => crate::MouseButton::Other(n as _),
 		};
 
-		web_sys::console::log_1(&ev);
-
 		event_handler.mouse_button_down_event(button, x, y)
 	});
 
