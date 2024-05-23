@@ -310,7 +310,7 @@ fn init_keyboard_events(canvas: &HtmlCanvasElement) {
 				logo: ev.meta_key(),
 			};
 
-			event_handler.key_down_event(keycode, modifiers, repeat);
+			event_handler.key_up_event(keycode, modifiers, repeat);
 		};
 	});
 
