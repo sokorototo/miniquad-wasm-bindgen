@@ -302,8 +302,7 @@ fn init_keyboard_events(canvas: &HtmlCanvasElement) {
 
 		if let Some(key) = keycodes::get_keycode(&ev.code()) {
 			let keycode = keycodes::translate_keycode(key);
-			// ? `key_up_event` takes only 2 arguments now, thus I removed it from the call
-			// let repeat = ev.repeat();
+      
 			let modifiers = crate::KeyMods {
 				shift: ev.shift_key(),
 				ctrl: ev.ctrl_key(),
