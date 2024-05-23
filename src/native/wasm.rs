@@ -1,7 +1,7 @@
 mod keycodes;
 pub mod webgl;
 
-use wasm_bindgen::{closure::Closure, JsCast, JsValue};
+use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::*;
 
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::mpsc::Receiver};
@@ -79,7 +79,7 @@ where
 	let (tx, rx) = std::sync::mpsc::channel();
 
 	// setup display
-	let display = NativeDisplayData::new(main_canvas.width() as _, main_canvas.height() as _, tx, Clipboard::new(&main_canvas));
+	let display = NativeDisplayData::new(main_canvas.width(), main_canvas.height(), tx, Clipboard::new(&main_canvas));
 	crate::set_display(display);
 
 	// setup event handler

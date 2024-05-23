@@ -6,8 +6,8 @@ pub(crate) struct DroppedFiles {
 	pub bytes: Vec<Vec<u8>>,
 }
 pub(crate) struct NativeDisplayData {
-	pub screen_width: i32,
-	pub screen_height: i32,
+	pub screen_width: u32,
+	pub screen_height: u32,
 	pub screen_position: (u32, u32),
 	pub dpi_scale: f32,
 	pub high_dpi: bool,
@@ -29,7 +29,7 @@ unsafe impl Send for NativeDisplayData {}
 unsafe impl Sync for NativeDisplayData {}
 
 impl NativeDisplayData {
-	pub fn new(screen_width: i32, screen_height: i32, native_requests: mpsc::Sender<Request>, clipboard: Box<dyn Clipboard>) -> NativeDisplayData {
+	pub fn new(screen_width: u32, screen_height: u32, native_requests: mpsc::Sender<Request>, clipboard: Box<dyn Clipboard>) -> NativeDisplayData {
 		NativeDisplayData {
 			screen_width,
 			screen_height,
@@ -59,6 +59,7 @@ pub(crate) enum Request {
 		new_width: u32,
 		new_height: u32,
 	},
+	// TODO: Currently unused on Linux
 	SetWindowPosition {
 		new_x: u32,
 		new_y: u32,

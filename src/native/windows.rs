@@ -148,8 +148,8 @@ impl WindowsDisplay {
 					0,
 					0,
 					// this is probably not correct: with high dpi content_width and window_width are actually different..
-					w,
-					h,
+					w as i32,
+					h as i32,
 					SWP_FRAMECHANGED,
 				);
 			}
@@ -658,9 +658,9 @@ impl WindowsDisplay {
 				let fb_height = ((window_height as f32 * self.content_scale) as i32).max(1);
 
 				// Check for size changes
-				if fb_width != d.screen_width || fb_height != d.screen_height {
-					d.screen_width = fb_width;
-					d.screen_height = fb_height;
+				if fb_width != d.screen_width as _ || fb_height != d.screen_height as _ {
+					d.screen_width = fb_width as _;
+					d.screen_height = fb_height as _;
 					return true;
 				}
 

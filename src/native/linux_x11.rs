@@ -100,9 +100,9 @@ impl X11Display {
 			}
 			22 => {
 				let mut d = crate::native_display().try_lock().unwrap();
-				if (*event).xconfigure.width != d.screen_width || (*event).xconfigure.height != d.screen_height {
-					let width = (*event).xconfigure.width;
-					let height = (*event).xconfigure.height;
+				if (*event).xconfigure.width != d.screen_width as _ || (*event).xconfigure.height != d.screen_height as _ {
+					let width = (*event).xconfigure.width as _;
+					let height = (*event).xconfigure.height as _;
 					d.screen_width = width;
 					d.screen_height = height;
 					drop(d);
@@ -270,7 +270,7 @@ impl X11Display {
 				ShowMouse(show) => self.show_mouse(show),
 				SetMouseCursor(icon) => self.set_cursor(self.window, Some(icon)),
 				SetWindowSize { new_width, new_height } => self.set_window_size(self.window, new_width as _, new_height as _),
-				SetWindowPosition { new_x, new_y } => {
+				SetWindowPosition { new_x: _, new_y: _ } => {
 					eprintln!("Not implemented for X11")
 				}
 				SetFullscreen(fullscreen) => self.set_fullscreen(self.window, fullscreen),
@@ -310,7 +310,7 @@ where
 	crate::set_display(NativeDisplayData {
 		high_dpi: conf.high_dpi,
 		dpi_scale: display.libx11.update_system_dpi(display.display),
-		..NativeDisplayData::new(w, h, tx, clipboard)
+		..NativeDisplayData::new(w as _, h as _, tx, clipboard)
 	});
 	if conf.fullscreen {
 		display.set_fullscreen(display.window, true);
@@ -381,7 +381,7 @@ where
 	crate::set_display(NativeDisplayData {
 		high_dpi: conf.high_dpi,
 		dpi_scale: display.libx11.update_system_dpi(display.display),
-		..NativeDisplayData::new(w, h, tx, clipboard)
+		..NativeDisplayData::new(w as _, h as _, tx, clipboard)
 	});
 	if conf.fullscreen {
 		display.set_fullscreen(display.window, true)

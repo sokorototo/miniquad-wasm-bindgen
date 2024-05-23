@@ -285,8 +285,8 @@ unsafe extern "C" fn xdg_toplevel_handle_configure(data: *mut std::ffi::c_void, 
 		};
 		(payload.egl.wl_egl_window_resize)(payload.egl_window, egl_w, egl_h, 0, 0);
 
-		d.screen_width = width;
-		d.screen_height = height;
+		d.screen_width = width as _;
+		d.screen_height = height as _;
 
 		if let Some(ref decorations) = payload.decorations {
 			drop(d);
@@ -368,7 +368,7 @@ where
 		let (tx, rx) = std::sync::mpsc::channel();
 		let clipboard = Box::new(WaylandClipboard);
 		crate::set_display(NativeDisplayData {
-			..NativeDisplayData::new(conf.window_width as i32, conf.window_height as i32, tx, clipboard)
+			..NativeDisplayData::new(conf.window_width, conf.window_height, tx, clipboard)
 		});
 
 		(display.client.wl_proxy_add_listener)(registry, &registry_listener as *const _ as _, &mut display as *mut _ as _);
