@@ -1,7 +1,7 @@
 mod keycodes;
 pub mod webgl;
 
-use wasm_bindgen::{closure::Closure, JsCast, UnwrapThrowExt};
+use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::*;
 
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::mpsc::Receiver};
@@ -193,7 +193,7 @@ fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static
 
 	if let Some(w) = web_sys::window() {
 		let callback = closure.as_ref().unchecked_ref();
-		w.request_animation_frame(callback).unwrap_throw();
+		w.request_animation_frame(callback).unwrap();
 	}
 }
 
@@ -206,7 +206,7 @@ fn init_unload_events() {
 	});
 
 	let fn_ref = handler.as_ref().unchecked_ref();
-	web_sys::window().unwrap().add_event_listener_with_callback("beforeunload", fn_ref).unwrap_throw();
+	web_sys::window().unwrap().add_event_listener_with_callback("beforeunload", fn_ref).unwrap();
 	handler.forget();
 }
 
@@ -282,11 +282,11 @@ fn init_mouse_events(canvas: &HtmlCanvasElement) {
 	let mouse_wheel_fn_ref = mouse_wheel_closure.as_ref().unchecked_ref();
 	let context_menu_fn_ref = context_menu.as_ref().unchecked_ref();
 
-	canvas.add_event_listener_with_callback("mousemove", mouse_move_ref).unwrap_throw();
-	canvas.add_event_listener_with_callback("mousedown", mouse_down_fn_ref).unwrap_throw();
-	canvas.add_event_listener_with_callback("mouseup", mouse_up_fn_ref).unwrap_throw();
-	canvas.add_event_listener_with_callback("wheel", mouse_wheel_fn_ref).unwrap_throw();
-	canvas.add_event_listener_with_callback("contextmenu", context_menu_fn_ref).unwrap_throw();
+	canvas.add_event_listener_with_callback("mousemove", mouse_move_ref).unwrap();
+	canvas.add_event_listener_with_callback("mousedown", mouse_down_fn_ref).unwrap();
+	canvas.add_event_listener_with_callback("mouseup", mouse_up_fn_ref).unwrap();
+	canvas.add_event_listener_with_callback("wheel", mouse_wheel_fn_ref).unwrap();
+	canvas.add_event_listener_with_callback("contextmenu", context_menu_fn_ref).unwrap();
 
 	// the idea is that we let JS take control of memory management
 	// since this function is an event listener, it won't be GC'd by Javascript
@@ -370,9 +370,9 @@ fn init_keyboard_events(canvas: &HtmlCanvasElement) {
 	let keypress_fn_ref = keypress_closure.as_ref().unchecked_ref();
 	let key_up_fn_ref = key_up_closure.as_ref().unchecked_ref();
 
-	canvas.add_event_listener_with_callback("keypress", keypress_fn_ref).unwrap_throw();
-	canvas.add_event_listener_with_callback("keyup", key_up_fn_ref).unwrap_throw();
-	canvas.add_event_listener_with_callback("keydown", key_down_closure_ref).unwrap_throw();
+	canvas.add_event_listener_with_callback("keypress", keypress_fn_ref).unwrap();
+	canvas.add_event_listener_with_callback("keyup", key_up_fn_ref).unwrap();
+	canvas.add_event_listener_with_callback("keydown", key_down_closure_ref).unwrap();
 
 	// same here
 	key_down_closure.forget();
@@ -407,9 +407,9 @@ fn init_focus_events(canvas: &HtmlCanvasElement) {
 	let blur_fn_ref = blur_closure.as_ref().unchecked_ref();
 	let visibility_change_fn_ref = visibility_change_closure.as_ref().unchecked_ref();
 
-	canvas.add_event_listener_with_callback("focus", focus_fn_ref).unwrap_throw();
-	canvas.add_event_listener_with_callback("blur", blur_fn_ref).unwrap_throw();
-	web_sys::window().unwrap().add_event_listener_with_callback("visibilitychange", visibility_change_fn_ref).unwrap_throw();
+	canvas.add_event_listener_with_callback("focus", focus_fn_ref).unwrap();
+	canvas.add_event_listener_with_callback("blur", blur_fn_ref).unwrap();
+	web_sys::window().unwrap().add_event_listener_with_callback("visibilitychange", visibility_change_fn_ref).unwrap();
 
 	focus_closure.forget();
 	blur_closure.forget();
@@ -504,10 +504,10 @@ fn init_touch_events(canvas: &HtmlCanvasElement) {
 	let touch_end_fn_ref = touch_end_closure.as_ref().unchecked_ref();
 	let touch_cancel_fn_ref = touch_cancel_closure.as_ref().unchecked_ref();
 
-	canvas.add_event_listener_with_callback("touchstart", touch_start_fn_ref).unwrap_throw();
-	canvas.add_event_listener_with_callback("touchmove", touch_move_fn_ref).unwrap_throw();
-	canvas.add_event_listener_with_callback("touchend", touch_end_fn_ref).unwrap_throw();
-	canvas.add_event_listener_with_callback("touchcancel", touch_cancel_fn_ref).unwrap_throw();
+	canvas.add_event_listener_with_callback("touchstart", touch_start_fn_ref).unwrap();
+	canvas.add_event_listener_with_callback("touchmove", touch_move_fn_ref).unwrap();
+	canvas.add_event_listener_with_callback("touchend", touch_end_fn_ref).unwrap();
+	canvas.add_event_listener_with_callback("touchcancel", touch_cancel_fn_ref).unwrap();
 
 	touch_start_closure.forget();
 	touch_move_closure.forget();
@@ -543,7 +543,7 @@ fn init_file_drop_events(canvas: &HtmlCanvasElement) {
 					let mut bytes = Vec::with_capacity(count as _);
 
 					for (name, d) in dropped {
-						let d = d.await.unwrap_throw();
+						let d = d.await.unwrap();
 
 						paths.push(PathBuf::from(name));
 						bytes.push(js_sys::Uint8Array::new(&d).to_vec());
@@ -564,8 +564,8 @@ fn init_file_drop_events(canvas: &HtmlCanvasElement) {
 	let drop_fn_ref = drop_closure.as_ref().unchecked_ref();
 	let drag_over_fn_ref = drag_over_closure.as_ref().unchecked_ref();
 
-	canvas.add_event_listener_with_callback("dragover", drag_over_fn_ref).unwrap_throw();
-	canvas.add_event_listener_with_callback("drop", drop_fn_ref).unwrap_throw();
+	canvas.add_event_listener_with_callback("dragover", drag_over_fn_ref).unwrap();
+	canvas.add_event_listener_with_callback("drop", drop_fn_ref).unwrap();
 
 	drag_over_closure.forget();
 	drop_closure.forget();
@@ -600,7 +600,7 @@ impl Clipboard {
 		let copy_closure: Closure<dyn Fn(_)> = Closure::new(move |ev: ClipboardEvent| {
 			if let Some(dt) = ev.clipboard_data() {
 				if let Some(text) = state_3.borrow().as_ref() {
-					dt.set_data("text", text).unwrap_throw();
+					dt.set_data("text", text).unwrap();
 					ev.prevent_default();
 				}
 			}
@@ -610,7 +610,7 @@ impl Clipboard {
 		let cut_closure: Closure<dyn Fn(_)> = Closure::new(move |ev: ClipboardEvent| {
 			if let Some(dt) = ev.clipboard_data() {
 				if let Some(text) = state_4.borrow_mut().take() {
-					dt.set_data("text", text.as_str()).unwrap_throw();
+					dt.set_data("text", text.as_str()).unwrap();
 					ev.prevent_default();
 				}
 			}
@@ -620,9 +620,9 @@ impl Clipboard {
 		let copy_fn_ref = copy_closure.as_ref().unchecked_ref();
 		let cut_fn_ref = cut_closure.as_ref().unchecked_ref();
 
-		canvas.add_event_listener_with_callback("paste", paste_fn_ref).unwrap_throw();
-		canvas.add_event_listener_with_callback("copy", copy_fn_ref).unwrap_throw();
-		canvas.add_event_listener_with_callback("cut", cut_fn_ref).unwrap_throw();
+		canvas.add_event_listener_with_callback("paste", paste_fn_ref).unwrap();
+		canvas.add_event_listener_with_callback("copy", copy_fn_ref).unwrap();
+		canvas.add_event_listener_with_callback("cut", cut_fn_ref).unwrap();
 
 		paste_closure.forget();
 		copy_closure.forget();
