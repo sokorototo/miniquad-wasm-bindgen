@@ -548,9 +548,9 @@ fn init_file_drop_events(canvas: &HtmlCanvasElement) {
 					}
 
 					// update
-					let mut d = crate::native_display().lock().unwrap();
-					d.dropped_files.paths = paths;
-					d.dropped_files.bytes = bytes;
+					// let mut d = crate::native_display().lock().unwrap();
+					// d.dropped_files.paths = paths;
+					// d.dropped_files.bytes = bytes;
 
 					// notify
 					event_handler.files_dropped_event();
