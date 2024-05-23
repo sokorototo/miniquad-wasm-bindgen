@@ -1,7 +1,7 @@
 mod keycodes;
 pub mod webgl;
 
-use wasm_bindgen::{closure::Closure, JsCast};
+use wasm_bindgen::{closure::Closure, JsCast, JsValue};
 use web_sys::*;
 
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::mpsc::Receiver};
@@ -302,7 +302,7 @@ fn init_keyboard_events(canvas: &HtmlCanvasElement) {
 
 		if let Some(key) = keycodes::get_keycode(&ev.code()) {
 			let keycode = keycodes::translate_keycode(key);
-      
+
 			let modifiers = crate::KeyMods {
 				shift: ev.shift_key(),
 				ctrl: ev.ctrl_key(),
@@ -521,8 +521,6 @@ fn init_file_drop_events(canvas: &HtmlCanvasElement) {
 		ev.prevent_default();
 
 		if let Some(dt) = ev.data_transfer() {
-			event_handler.files_dropped_event();
-
 			if let Some(files) = dt.files() {
 				let count = files.length();
 
@@ -535,6 +533,8 @@ fn init_file_drop_events(canvas: &HtmlCanvasElement) {
 						dropped.push((name, wasm_bindgen_futures::JsFuture::from(file)));
 					}
 				}
+
+				web_sys::console::debug_1(&JsValue::from_str(format!("Dropped {} files", count).as_str()));
 
 				wasm_bindgen_futures::spawn_local(async move {
 					let mut paths = Vec::with_capacity(count as _);
