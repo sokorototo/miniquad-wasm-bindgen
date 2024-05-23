@@ -102,3 +102,4 @@ features = [
 
 [dev-dependencies]
 glam = { version = "0.27.0", features = ["scalar-math"] }
+quad-rand = "*"
