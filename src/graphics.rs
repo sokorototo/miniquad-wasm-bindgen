@@ -686,7 +686,6 @@ pub struct PipelineParams {
 	pub primitive_type: PrimitiveType,
 }
 
-// TODO(next major version bump): should be PipelineId
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Pipeline(usize);
 

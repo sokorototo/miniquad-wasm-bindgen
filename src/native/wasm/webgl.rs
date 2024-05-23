@@ -355,11 +355,28 @@ pub fn is_gl2() -> bool {
 	true
 }
 
+// ================= DATA EXTRACTION =================
+pub fn glGetError() -> GLenum {
+	get_gl().get_error()
+}
+
+pub fn glGetString(name: GLenum) -> *const GLubyte {
+	let param = get_gl().get_parameter(name).unwrap();
+	let param = param.as_string().unwrap();
+
+	let c_str = std::ffi::CString::new(param).unwrap();
+	let c_str = std::mem::ManuallyDrop::new(c_str);
+
+	// cleaned manually for WebGL, for all invocations
+	c_str.as_ptr() as _
+}
+
+// TODO: Correct implementation of glGetIntegerv
 #[inline(always)]
 pub unsafe fn glGetIntegerv(_: u32, data: *mut GLint) {
-	// TODO: Correct implementation of glGetIntegerv
 	#[cfg(feature = "log-impl")]
 	crate::warn!("STUB: glGetIntegerv isn't supported on WebGL");
+
 	let data: &mut GLint = data.as_mut().unwrap();
 	*data = 0;
 }
@@ -401,6 +418,8 @@ pub unsafe fn glDeleteFramebuffers(n: GLsizei, framebuffers: *const GLuint) {
 	}
 }
 
+// ================== DRAWING ==================
+
 pub unsafe fn glDrawBuffers(n: GLsizei, bufs: *const GLenum) {
 	let n = n as usize;
 	let bufs = slice::from_raw_parts(bufs, n);
@@ -412,6 +431,57 @@ pub unsafe fn glDrawBuffers(n: GLsizei, bufs: *const GLenum) {
 
 	let gl = get_gl();
 	gl.draw_buffers(&array);
+}
+
+pub fn glDrawArrays(mode: GLenum, first: GLint, count: GLsizei) {
+	get_gl().draw_arrays(mode, first, count);
+}
+pub fn glDrawElements(mode: GLenum, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void) {
+	get_gl().draw_elements_with_i32(mode, count, type_, indices as i32);
+}
+
+// ==================== RENDERBUFFERS ====================
+
+static mut RENDER_BUFFERS: BTreeMap<u32, WebGlRenderbuffer> = BTreeMap::new();
+
+pub unsafe fn glGenRenderbuffers(n: GLsizei, renderbuffers: *mut GLuint) {
+	let gl = get_gl();
+	let renderbuffers = slice::from_raw_parts_mut(renderbuffers, n as usize);
+
+	for rb in renderbuffers {
+		let renderbuffer = gl.create_renderbuffer().unwrap_throw();
+		let idx = counter::increment();
+		RENDER_BUFFERS.insert(idx, renderbuffer);
+		*rb = idx as GLuint;
+	}
+}
+
+pub unsafe fn glBindRenderbuffer(target: GLenum, renderbuffer: GLuint) {
+	get_gl().bind_renderbuffer(target, RENDER_BUFFERS.get(&renderbuffer));
+}
+
+pub unsafe fn glFramebufferRenderbuffer(target: GLenum, attachment: GLenum, renderbuffer_target: GLenum, renderbuffer: GLuint) {
+	let renderbuffer = RENDER_BUFFERS.get(&renderbuffer);
+	get_gl().framebuffer_renderbuffer(target, attachment, renderbuffer_target, renderbuffer);
+}
+
+pub fn glGetRenderbufferParameteriv(target: GLenum, pname: GLenum, _params: *mut GLint) {
+	get_gl().get_renderbuffer_parameter(target, pname);
+	todo!("No reference implementation")
+}
+
+pub unsafe fn glDeleteRenderbuffers(n: GLsizei, renderbuffers: *const GLuint) {
+	let renderbuffers = unsafe { slice::from_raw_parts(renderbuffers, n as usize) };
+
+	for rb in renderbuffers {
+		let renderbuffer = RENDER_BUFFERS.remove(rb);
+		get_gl().delete_renderbuffer(renderbuffer.as_ref());
+	}
+}
+
+pub unsafe fn glCheckFramebufferStatus(target: GLenum) -> GLenum {
+	let Some(_b) = RENDER_BUFFERS.get(&target) else { return 0 };
+	unimplemented!("No reference implementation")
 }
 
 // ==================== VERTEX ARRAYS ====================
@@ -437,19 +507,6 @@ pub unsafe fn glBindVertexArray(vao: GLuint) {
 	debug_assert!(VERTEX_ARRAY_OBJECTS.contains_key(&vao));
 	let gl = get_gl();
 	gl.bind_vertex_array(VERTEX_ARRAY_OBJECTS.get(&vao));
-}
-
-// ==================== GET STRING ====================
-
-pub fn glGetString(name: GLenum) -> *const GLubyte {
-	let param = get_gl().get_parameter(name).unwrap();
-	let param = param.as_string().unwrap();
-
-	let c_str = std::ffi::CString::new(param).unwrap();
-	let c_str = std::mem::ManuallyDrop::new(c_str);
-
-	// cleaned manually for WebGL, for all invocations
-	c_str.as_ptr() as _
 }
 
 // ==================== SHADERS ====================
@@ -589,6 +646,11 @@ pub unsafe fn glGetAttribLocation(program: GLuint, name: *const GLchar) -> GLint
 	let program = PROGRAMS.get(&program).unwrap_throw();
 	let name = std::ffi::CStr::from_ptr(name).to_str().unwrap_throw();
 	get_gl().get_attrib_location(program, name)
+}
+pub unsafe fn glBindAttribLocation(program: GLuint, index: GLuint, name: *const GLchar) {
+	let program = PROGRAMS.get(&program).unwrap_throw();
+	let name = std::ffi::CStr::from_ptr(name).to_str().unwrap_throw();
+	get_gl().bind_attrib_location(program, index, name);
 }
 
 #[derive(Default)]
@@ -904,6 +966,30 @@ pub unsafe fn glTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoff
 		.unwrap_throw();
 }
 
+#[inline(always)]
+pub fn glCopyTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, x: GLint, y: GLint, width: GLsizei, height: GLsizei, border: GLint) {
+	get_gl().copy_tex_image_2d(target, level, internalformat, x, y, width, height, border);
+}
+
+#[inline(always)]
+pub fn glCopyTexSubImage2D(target: GLenum, level: GLint, x_offset: GLint, y_offset: GLint, x: GLint, y: GLint, width: GLsizei, height: GLsizei) {
+	get_gl().copy_tex_sub_image_2d(target, level, x_offset, y_offset, x, y, width, height);
+}
+
+pub unsafe fn glCompressedTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, width: GLsizei, height: GLsizei, border: GLint, imageSize: GLsizei, data: *const ::std::os::raw::c_void) {
+	let length = imageSize as usize;
+	let data = std::slice::from_raw_parts(data as *const u8, length);
+
+	get_gl().compressed_tex_image_2d_with_u8_array(target, level, internalformat, width, height, border, data);
+}
+
+pub unsafe fn glCompressedTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, imageSize: GLsizei, data: *const ::std::os::raw::c_void) {
+	let length = imageSize as usize;
+	let data = std::slice::from_raw_parts_mut(data as *mut u8, length);
+
+	get_gl().compressed_tex_sub_image_2d_with_u8_array(target, level, xoffset, yoffset, width, height, format, data);
+}
+
 pub unsafe fn glDeleteTextures(n: GLsizei, textures: *const GLuint) {
 	let n = n as usize;
 	let textures = slice::from_raw_parts(textures, n);
@@ -974,6 +1060,16 @@ pub fn glColorMask(red: GLboolean, green: GLboolean, blue: GLboolean, alpha: GLb
 #[inline(always)]
 pub fn glFrontFace(mode: GLenum) {
 	get_gl().front_face(mode)
+}
+
+#[inline(always)]
+pub fn glDepthMask(flag: GLboolean) {
+	get_gl().depth_mask(flag != 0)
+}
+
+#[inline(always)]
+pub fn glDepthRangef(n: GLfloat, f: GLfloat) {
+	get_gl().depth_range(n, f)
 }
 
 // ==================== STENCILS & CULLING====================
@@ -1135,33 +1231,26 @@ pub fn glClear(mask: GLbitfield) {
 pub fn glClearStencil(s: GLint) {
 	get_gl().clear_stencil(s)
 }
+// ================ * ====================
+#[inline(always)]
+pub fn glFinish() {
+	get_gl().finish();
+}
+
+#[inline(always)]
+pub fn glFlush() {
+	get_gl().flush();
+}
 
 // extern "C" {
-// 	pub fn glBindAttribLocation(program: GLuint, index: GLuint, name: *const GLchar);
-// 	pub fn glBindRenderbuffer(target: GLenum, renderbuffer: GLuint);
-// 	pub fn glCheckFramebufferStatus(target: GLenum) -> GLenum;
-// 	pub fn glCompressedTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, width: GLsizei, height: GLsizei, border: GLint, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
-// 	pub fn glCompressedTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, imageSize: GLsizei, data: *const ::std::os::raw::c_void);
-// 	pub fn glCopyTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, x: GLint, y: GLint, width: GLsizei, height: GLsizei, border: GLint);
-// 	pub fn glCopyTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, x: GLint, y: GLint, width: GLsizei, height: GLsizei);
-// 	pub fn glDeleteRenderbuffers(n: GLsizei, renderbuffers: *const GLuint);
-// 	pub fn glDepthMask(flag: GLboolean);
-// 	pub fn glDepthRangef(n: GLfloat, f: GLfloat);
-// 	pub fn glDrawArrays(mode: GLenum, first: GLint, count: GLsizei);
-// 	pub fn glDrawElements(mode: GLenum, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void);
-// 	pub fn glFinish();
-// 	pub fn glFlush();
-// 	pub fn glFramebufferRenderbuffer(target: GLenum, attachment: GLenum, renderbuffertarget: GLenum, renderbuffer: GLuint);
-// 	pub fn glGenRenderbuffers(n: GLsizei, renderbuffers: *mut GLuint);
+
 // 	pub fn glGetActiveAttrib(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLint, type_: *mut GLenum, name: *mut GLchar);
 // 	pub fn glGetActiveUniform(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLint, type_: *mut GLenum, name: *mut GLchar);
 // 	pub fn glGetAttachedShaders(program: GLuint, maxCount: GLsizei, count: *mut GLsizei, shaders: *mut GLuint);
 // 	pub fn glGetBooleanv(pname: GLenum, data: *mut GLboolean);
 // 	pub fn glGetBufferParameteriv(target: GLenum, pname: GLenum, params: *mut GLint);
-// 	pub fn glGetError() -> GLenum;
 // 	pub fn glGetFloatv(pname: GLenum, data: *mut GLfloat);
 // 	pub fn glGetFramebufferAttachmentParameteriv(target: GLenum, attachment: GLenum, pname: GLenum, params: *mut GLint);
-// 	pub fn glGetRenderbufferParameteriv(target: GLenum, pname: GLenum, params: *mut GLint);
 // 	pub fn glGetShaderPrecisionFormat(shadertype: GLenum, precisiontype: GLenum, range: *mut GLint, precision: *mut GLint);
 // 	pub fn glGetShaderSource(shader: GLuint, bufSize: GLsizei, length: *mut GLsizei, source: *mut GLchar);
 // 	pub fn glGetTexParameterfv(target: GLenum, pname: GLenum, params: *mut GLfloat);
@@ -1255,6 +1344,7 @@ pub fn glClearStencil(s: GLint) {
 // 	pub fn glQueryCounter(id: GLenum, pname: GLenum);
 // 	pub fn glGetQueryObjectiv(id: GLuint, pname: GLenum, params: *mut GLint);
 // 	pub fn glGetQueryObjectui64v(id: GLuint, pname: GLenum, params: *mut GLuint64);
+
 // 	pub fn glUnmapBuffer(target: GLenum) -> GLboolean;
 // 	pub fn glGetBufferPointerv(target: GLenum, pname: GLenum, params: *mut *mut ::std::os::raw::c_void);
 // 	pub fn glUniformMatrix2x3fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);

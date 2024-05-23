@@ -24,13 +24,13 @@ fn get_dpi_scale(high_dpi: bool) -> f64 {
 }
 
 // SAFETY: Can't have a data race in a single threaded environment, wasm is single threaded
-fn get_event_handler(swap: Option<*mut dyn EventHandler>) -> &'static mut dyn EventHandler {
-	unsafe {
-		static mut EVENT_HANDLER: Option<*mut dyn EventHandler> = None;
-		EVENT_HANDLER = swap.or(EVENT_HANDLER);
-		&mut *EVENT_HANDLER.unwrap()
+	fn get_event_handler(swap: Option<*mut dyn EventHandler>) -> &'static mut dyn EventHandler {
+		unsafe {
+			static mut EVENT_HANDLER: Option<*mut dyn EventHandler> = None;
+			EVENT_HANDLER = swap.or(EVENT_HANDLER);
+			&mut *EVENT_HANDLER.unwrap()
+		}
 	}
-}
 
 pub fn run<F>(conf: &crate::conf::Conf, f: F)
 where

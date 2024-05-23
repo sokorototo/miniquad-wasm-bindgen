@@ -99,6 +99,7 @@ features = [
 	"WebGlUniformLocation",
 	"WebGlQuery",
 	"WebGlBuffer",
+	"WebGlRenderbuffer",
 ]
 
 [dev-dependencies]
