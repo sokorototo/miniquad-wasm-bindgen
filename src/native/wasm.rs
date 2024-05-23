@@ -534,8 +534,6 @@ fn init_file_drop_events(canvas: &HtmlCanvasElement) {
 					}
 				}
 
-				web_sys::console::debug_1(&JsValue::from_str(format!("Dropped {} files", count).as_str()));
-
 				wasm_bindgen_futures::spawn_local(async move {
 					let mut paths = Vec::with_capacity(count as _);
 					let mut bytes = Vec::with_capacity(count as _);
@@ -547,10 +545,12 @@ fn init_file_drop_events(canvas: &HtmlCanvasElement) {
 						bytes.push(js_sys::Uint8Array::new(&d).to_vec());
 					}
 
-					// update
-					// let mut d = crate::native_display().lock().unwrap();
-					// d.dropped_files.paths = paths;
-					// d.dropped_files.bytes = bytes;
+					{
+						// update
+						let mut d = crate::native_display().lock().unwrap();
+						d.dropped_files.paths = paths;
+						d.dropped_files.bytes = bytes;
+					}
 
 					// notify
 					event_handler.files_dropped_event();
