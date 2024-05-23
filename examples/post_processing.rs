@@ -188,9 +188,9 @@ impl EventHandler for Stage {
 
 	fn draw(&mut self) {
 		let (width, height) = {
-            let (w, h) = window::screen_size();
-            (w as f32, h as f32)
-        };
+			let (w, h) = window::screen_size();
+			(w as f32, h as f32)
+		};
 		let proj = Mat4::perspective_rh_gl(60.0f32.to_radians(), width / height, 0.01, 10.0);
 		let view = Mat4::look_at_rh(vec3(0.0, 1.5, 3.0), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0));
 		let view_proj = proj * view;
@@ -200,9 +200,9 @@ impl EventHandler for Stage {
 		let model = Mat4::from_rotation_y(self.ry) * Mat4::from_rotation_y(self.rx);
 
 		let (w, h) = {
-            let (w, h) = window::screen_size();
-            (w as f32, h as f32)
-        };
+			let (w, h) = window::screen_size();
+			(w as f32, h as f32)
+		};
 		// the offscreen pass, rendering an rotating, untextured cube into a render target image
 		self.ctx.begin_pass(Some(self.offscreen_pass), PassAction::clear_color(1.0, 1.0, 1.0, 1.0));
 		self.ctx.apply_pipeline(&self.offscreen_pipeline);

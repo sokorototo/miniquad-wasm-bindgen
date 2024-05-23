@@ -125,9 +125,9 @@ impl EventHandler for Stage {
 
 		// model-view-projection matrix
 		let (width, height) = {
-            let (w, h) = window::screen_size();
-            (w as f32, h as f32)
-        };
+			let (w, h) = window::screen_size();
+			(w as f32, h as f32)
+		};
 
 		let proj = Mat4::perspective_rh_gl(60.0f32.to_radians(), width / height, 0.01, 50.0);
 		let view = Mat4::look_at_rh(vec3(0.0, 1.5, 12.0), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0));
