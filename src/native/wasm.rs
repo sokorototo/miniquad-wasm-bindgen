@@ -302,7 +302,6 @@ fn init_keyboard_events(canvas: &HtmlCanvasElement) {
 
 		if let Some(key) = keycodes::get_keycode(&ev.code()) {
 			let keycode = keycodes::translate_keycode(key);
-			let repeat = ev.repeat();
 			let modifiers = crate::KeyMods {
 				shift: ev.shift_key(),
 				ctrl: ev.ctrl_key(),
@@ -310,7 +309,7 @@ fn init_keyboard_events(canvas: &HtmlCanvasElement) {
 				logo: ev.meta_key(),
 			};
 
-			event_handler.key_up_event(keycode, modifiers, repeat);
+			event_handler.key_up_event(keycode, modifiers);
 		};
 	});
 
