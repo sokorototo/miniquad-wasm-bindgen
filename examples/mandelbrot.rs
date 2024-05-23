@@ -82,7 +82,10 @@ impl Mandelbrot {
 	}
 	// Returns two floats (x and y) from -0.5 to 0.5, with (0.0, 0.0) being the center of the screen
 	fn norm_mouse_pos(self: &Self, x: f32, y: f32) -> (f32, f32) {
-		let screen_size = window::screen_size();
+		let screen_size = {
+            let (w, h) = window::screen_size();
+            (w as f32, h as f32)
+        };
 		let pos = (4.0 * (x / screen_size.0 - 0.5).powi(3), 4.0 * (y / screen_size.1 - 0.5).powi(3));
 
 		pos
@@ -117,7 +120,10 @@ impl EventHandler for Mandelbrot {
 		ctx.apply_bindings(&self.bindings);
 
 		// make sure to not stretch
-		let screen_size = window::screen_size();
+		let screen_size = {
+            let (w, h) = window::screen_size();
+            (w as f32, h as f32)
+        };
 
 		let ratio = screen_size.1 / screen_size.0;
 		let (mut scale_x, mut scale_y) = if ratio <= 1.0 { (ratio, 1.0) } else { (1.0, 1.0 / ratio) };
