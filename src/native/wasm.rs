@@ -24,13 +24,13 @@ fn get_dpi_scale(high_dpi: bool) -> f64 {
 }
 
 // SAFETY: Can't have a data race in a single threaded environment, wasm is single threaded
-	fn get_event_handler(swap: Option<*mut dyn EventHandler>) -> &'static mut dyn EventHandler {
-		unsafe {
-			static mut EVENT_HANDLER: Option<*mut dyn EventHandler> = None;
-			EVENT_HANDLER = swap.or(EVENT_HANDLER);
-			&mut *EVENT_HANDLER.unwrap()
-		}
+fn get_event_handler(swap: Option<*mut dyn EventHandler>) -> &'static mut dyn EventHandler {
+	unsafe {
+		static mut EVENT_HANDLER: Option<*mut dyn EventHandler> = None;
+		EVENT_HANDLER = swap.or(EVENT_HANDLER);
+		&mut *EVENT_HANDLER.unwrap()
 	}
+}
 
 pub fn run<F>(conf: &crate::conf::Conf, f: F)
 where
@@ -528,30 +528,35 @@ fn init_file_drop_events(canvas: &HtmlCanvasElement) {
 			if let Some(files) = dt.files() {
 				let count = files.length();
 
-				let mut paths = Vec::with_capacity(count as _);
-				let mut bytes = Vec::with_capacity(count as _);
-
+				let mut dropped = Vec::with_capacity(count as _);
 				for i in 0..count {
 					if let Some(file) = files.item(i) {
 						let name = file.name();
-						let array_buffer = file.array_buffer();
+						let file = file.array_buffer();
 
-						let data = wasm_bindgen_futures::JsFuture::from(array_buffer);
-						let data = pollster::block_on(data).unwrap();
-
-						// collect
-						paths.push(PathBuf::from(name));
-						bytes.push(js_sys::Uint8Array::new(&data).to_vec());
+						dropped.push((name, wasm_bindgen_futures::JsFuture::from(file)));
 					}
 				}
 
-				// update
-				let mut d = crate::native_display().lock().unwrap();
-				d.dropped_files.paths = paths;
-				d.dropped_files.bytes = bytes;
+				wasm_bindgen_futures::spawn_local(async move {
+					let mut paths = Vec::with_capacity(count as _);
+					let mut bytes = Vec::with_capacity(count as _);
 
-				// notify
-				event_handler.files_dropped_event();
+					for (name, d) in dropped {
+						let d = d.await.unwrap_throw();
+
+						paths.push(PathBuf::from(name));
+						bytes.push(js_sys::Uint8Array::new(&d).to_vec());
+					}
+
+					// update
+					let mut d = crate::native_display().lock().unwrap();
+					d.dropped_files.paths = paths;
+					d.dropped_files.bytes = bytes;
+
+					// notify
+					event_handler.files_dropped_event();
+				});
 			}
 		}
 	});
