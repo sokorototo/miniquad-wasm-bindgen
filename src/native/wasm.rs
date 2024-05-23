@@ -54,8 +54,8 @@ where
 	let high_dpi = conf.high_dpi;
 	let dpi = get_dpi_scale(high_dpi) as i32;
 
-	main_canvas.set_width((conf.window_width * dpi) as u32);
-	main_canvas.set_height((conf.window_height * dpi) as u32);
+	main_canvas.set_width((conf.window_width as i32 * dpi) as u32);
+	main_canvas.set_height((conf.window_height as i32 * dpi) as u32);
 	main_canvas.style().set_property("width", &format!("{}px", conf.window_width)).unwrap();
 	main_canvas.style().set_property("height", &format!("{}px", conf.window_height)).unwrap();
 	main_canvas.focus().unwrap();
@@ -302,7 +302,8 @@ fn init_keyboard_events(canvas: &HtmlCanvasElement) {
 
 		if let Some(key) = keycodes::get_keycode(&ev.code()) {
 			let keycode = keycodes::translate_keycode(key);
-			let repeat = ev.repeat();
+			// ? `key_up_event` takes only 2 arguments now, thus I removed it from the call
+			// let repeat = ev.repeat();
 			let modifiers = crate::KeyMods {
 				shift: ev.shift_key(),
 				ctrl: ev.ctrl_key(),
@@ -310,7 +311,7 @@ fn init_keyboard_events(canvas: &HtmlCanvasElement) {
 				logo: ev.meta_key(),
 			};
 
-			event_handler.key_up_event(keycode, modifiers, repeat);
+			event_handler.key_up_event(keycode, modifiers);
 		};
 	});
 

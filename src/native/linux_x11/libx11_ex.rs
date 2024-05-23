@@ -145,10 +145,10 @@ impl LibX11 {
 		(*hints).flags |= PWinGravity;
 		if conf.window_resizable == false {
 			(*hints).flags |= PMinSize | PMaxSize;
-			(*hints).min_width = conf.window_width;
-			(*hints).min_height = conf.window_height;
-			(*hints).max_width = conf.window_width;
-			(*hints).max_height = conf.window_height;
+			(*hints).min_width = conf.window_width as i32;
+			(*hints).min_height = conf.window_height as i32;
+			(*hints).max_width = conf.window_width as i32;
+			(*hints).max_height = conf.window_height as i32;
 		}
 		(*hints).win_gravity = StaticGravity;
 		(self.XSetWMNormalHints)(display, window, hints);

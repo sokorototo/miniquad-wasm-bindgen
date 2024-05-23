@@ -368,7 +368,7 @@ where
 		let (tx, rx) = std::sync::mpsc::channel();
 		let clipboard = Box::new(WaylandClipboard);
 		crate::set_display(NativeDisplayData {
-			..NativeDisplayData::new(conf.window_width, conf.window_height, tx, clipboard)
+			..NativeDisplayData::new(conf.window_width as i32, conf.window_height as i32, tx, clipboard)
 		});
 
 		(display.client.wl_proxy_add_listener)(registry, &registry_listener as *const _ as _, &mut display as *mut _ as _);
@@ -477,7 +477,7 @@ where
 				extensions::xdg_decoration::ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE
 			);
 		} else if conf.platform.wayland_use_fallback_decorations {
-			display.decorations = Some(decorations::Decorations::new(&mut display, conf.window_width, conf.window_height));
+			display.decorations = Some(decorations::Decorations::new(&mut display, conf.window_width as i32, conf.window_height as i32));
 		}
 
 		let event_handler = (f.take().unwrap())();

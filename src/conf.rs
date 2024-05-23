@@ -134,11 +134,11 @@ pub struct Conf {
 	/// The preferred width of the window, ignored on wasm/android.
 	///
 	/// Default: 800
-	pub window_width: i32,
+	pub window_width: u32,
 	/// The preferred height of the window, ignored on wasm/android.
 	///
 	/// Default: 600
-	pub window_height: i32,
+	pub window_height: u32,
 	/// Whether the rendering canvas is full-resolution on HighDPI displays.
 	///
 	/// Default: false
