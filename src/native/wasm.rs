@@ -24,10 +24,10 @@ fn get_dpi_scale(high_dpi: bool) -> f64 {
 }
 
 // SAFETY: Can't have a data race in a single threaded environment, wasm is single threaded
-fn get_event_handler(swap: Option<*mut dyn EventHandler>) -> &'static mut dyn EventHandler {
+fn get_event_handler(insert: Option<*mut dyn EventHandler>) -> &'static mut dyn EventHandler {
 	unsafe {
 		static mut EVENT_HANDLER: Option<*mut dyn EventHandler> = None;
-		EVENT_HANDLER = swap.or(EVENT_HANDLER);
+		EVENT_HANDLER = EVENT_HANDLER.or(insert);
 		&mut *EVENT_HANDLER.unwrap()
 	}
 }
@@ -67,7 +67,7 @@ where
 
 	// setup webgl2 context
 	let gl = main_canvas
-		.get_context_with_context_options("webgl2", &webgl_attributes.into())
+		.get_context_with_context_options("webgl2", &webgl_attributes)
 		.unwrap()
 		.unwrap()
 		.dyn_into::<WebGl2RenderingContext>()
