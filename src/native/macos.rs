@@ -145,15 +145,14 @@ impl MacosDisplay {
 		}
 	}
 
-	unsafe fn update_dimensions(&mut self) -> Option<(i32, i32)> {
-		let mut d = native_display().lock().unwrap();
-		if d.high_dpi {
-			let screen: ObjcId = msg_send![self.window, screen];
-			let dpi_scale: f64 = msg_send![screen, backingScaleFactor];
-			d.dpi_scale = dpi_scale as f32;
-		} else {
-			d.dpi_scale = 1.0;
-		}
+    unsafe fn update_dimensions(&mut self) -> Option<(i32, i32)> {
+        let mut d = native_display().lock().unwrap();
+        if d.high_dpi {
+            let dpi_scale: f64 = msg_send![self.window, backingScaleFactor];
+            d.dpi_scale = dpi_scale as f32;
+        } else {
+            d.dpi_scale = 1.0;
+        }
 
 		let bounds: NSRect = msg_send![self.view, bounds];
 		let screen_width = (bounds.size.width as f32 * d.dpi_scale) as i32;
@@ -171,22 +170,25 @@ impl MacosDisplay {
 		}
 	}
 
-	fn process_request(&mut self, request: Request) {
-		use Request::*;
-		unsafe {
-			match request {
-				SetCursorGrab(grab) => self.set_cursor_grab(self.window, grab),
-				ShowMouse(show) => self.show_mouse(show),
-				SetMouseCursor(icon) => self.set_mouse_cursor(icon),
-				SetWindowSize { new_width, new_height } => self.set_window_size(new_width as _, new_height as _),
-				SetFullscreen(fullscreen) => self.set_fullscreen(fullscreen),
-				SetWindowPosition { new_x, new_y } => {
-					eprintln!("Not implemented for macos");
-				}
-				_ => {}
-			}
-		}
-	}
+    fn process_request(&mut self, request: Request) {
+        use Request::*;
+        unsafe {
+            match request {
+                SetCursorGrab(grab) => self.set_cursor_grab(self.window, grab),
+                ShowMouse(show) => self.show_mouse(show),
+                SetMouseCursor(icon) => self.set_mouse_cursor(icon),
+                SetWindowSize {
+                    new_width,
+                    new_height,
+                } => self.set_window_size(new_width as _, new_height as _),
+                SetFullscreen(fullscreen) => self.set_fullscreen(fullscreen),
+                SetWindowPosition{new_x, new_y} => {
+                    eprintln!("Not implemented for macos");
+                }
+                _ => {}
+            }
+        }
+    }
 }
 
 #[derive(Default)]

@@ -134,6 +134,11 @@ pub mod window {
 		d.high_dpi
 	}
 
+	pub fn blocking_event_loop() -> bool {
+		let d = native_display().lock().unwrap();
+		d.blocking_event_loop
+	}
+
 	/// This function simply quits the application without
 	/// giving the user a chance to intervene. Usually this might
 	/// be called when the user clicks the 'Ok' button in a 'Really Quit?'
@@ -146,6 +151,15 @@ pub mod window {
 		d.quit = true;
 	}
 
+	/// Cancels a pending quit request, either initiated
+	/// by the user clicking the window close button, or programmatically
+	/// by calling "request_quit()". The only place where calling this
+	/// function makes sense is from inside the event handler callback when
+	/// the "quit_requested_event" event has been received
+	pub fn cancel_quit() {
+		let mut d = native_display().lock().unwrap();
+		d.quit_requested = false;
+	}
 	/// Capture mouse cursor to the current window
 	/// On WASM this will automatically hide cursor
 	/// On desktop this will bound cursor to windows border
@@ -153,8 +167,17 @@ pub mod window {
 	///         so set_cursor_grab(false) on window's focus lost is recommended.
 	/// TODO: implement window focus events
 	pub fn set_cursor_grab(grab: bool) {
-		let d = native_display().lock().unwrap();
-		d.native_requests.send(native::Request::SetCursorGrab(grab)).unwrap();
+		let mut d = native_display().lock().unwrap();
+		d.native_requests.send(native::Request::SetCursorGrab(grab));
+	}
+
+	/// With `conf.platform.blocking_event_loop`, `schedule_update` called from an
+	/// event handler makes draw()/update() functions to be called without waiting
+	/// for a next event.
+	///
+	/// Does nothing if `conf.platform.blocking_event_loop` == `false`.
+	pub fn schedule_update() {
+		d.native_requests.send(native::Request::ScheduleUpdate);
 	}
 
 	/// Show or hide the mouse cursor
@@ -176,8 +199,8 @@ pub mod window {
 	}
 
 	pub fn set_window_position(new_x: u32, new_y: u32) {
-		let d = native_display().lock().unwrap();
-		d.native_requests.send(native::Request::SetWindowPosition { new_x, new_y }).unwrap();
+		let mut d = native_display().lock().unwrap();
+		d.native_requests.send(native::Request::SetWindowPosition { new_x, new_y });
 	}
 
 	/// Get the position of the window.

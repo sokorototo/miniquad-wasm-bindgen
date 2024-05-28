@@ -49,6 +49,7 @@ pub(crate) struct WindowsDisplay {
 	dc: HDC,
 	event_handler: Option<Box<dyn EventHandler>>,
 	modal_resizing_timer: usize,
+	update_requested: bool,
 }
 
 impl WindowsDisplay {
@@ -707,6 +708,9 @@ impl WindowsDisplay {
 	fn process_request(&mut self, request: Request) {
 		use Request::*;
 		match request {
+			ScheduleUpdate => {
+				self.update_requested = true;
+			}
 			SetCursorGrab(grab) => self.set_cursor_grab(grab),
 			ShowMouse(show) => self.show_mouse(show),
 			SetMouseCursor(icon) => self.set_mouse_cursor(icon),
@@ -758,6 +762,7 @@ where
 			dc,
 			event_handler: None,
 			modal_resizing_timer: 0,
+			update_requested: true,
 		};
 		display.init_dpi(conf.high_dpi);
 
@@ -766,6 +771,7 @@ where
 		crate::set_display(NativeDisplayData {
 			high_dpi: conf.high_dpi,
 			dpi_scale: display.window_scale,
+			blocking_event_loop: conf.platform.blocking_event_loop,
 			..NativeDisplayData::new(conf.window_width, conf.window_height, tx, clipboard)
 		});
 
@@ -789,21 +795,32 @@ where
 				display.process_request(request);
 			}
 
-			let mut msg: MSG = std::mem::zeroed();
-			while PeekMessageW(&mut msg as *mut _ as _, NULL as _, 0, 0, PM_REMOVE) != 0 {
-				if WM_QUIT == msg.message {
+			let mut dispatch_message = |mut msg: MSG| {
+				if msg.message == WM_QUIT {
 					done = true;
-					continue;
 				} else {
 					TranslateMessage(&mut msg as *mut _ as _);
 					DispatchMessageW(&mut msg as *mut _ as _);
 				}
+			};
+			let mut msg: MSG = std::mem::zeroed();
+			let block_on_wait = conf.platform.blocking_event_loop && !display.update_requested;
+			if block_on_wait {
+				GetMessageW(&mut msg as *mut _ as _, NULL as _, 0, 0);
+				dispatch_message(msg);
+			} else {
+				while PeekMessageW(&mut msg as *mut _ as _, NULL as _, 0, 0, PM_REMOVE) != 0 {
+					dispatch_message(msg);
+				}
 			}
 
-			display.event_handler.as_mut().unwrap().update();
-			display.event_handler.as_mut().unwrap().draw();
+			if !conf.platform.blocking_event_loop || display.update_requested {
+				display.update_requested = false;
+				display.event_handler.as_mut().unwrap().update();
+				display.event_handler.as_mut().unwrap().draw();
 
-			SwapBuffers(display.dc);
+				SwapBuffers(display.dc);
+			}
 
 			if display.update_dimensions(wnd) {
 				let d = crate::native_display().lock().unwrap();

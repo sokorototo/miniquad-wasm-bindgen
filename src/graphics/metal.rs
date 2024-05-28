@@ -138,12 +138,13 @@ impl From<VertexStep> for MTLVertexStepFunction {
 }
 
 impl From<PrimitiveType> for MTLPrimitiveType {
-	fn from(primitive_type: PrimitiveType) -> Self {
-		match primitive_type {
-			PrimitiveType::Triangles => MTLPrimitiveType::Triangle,
-			PrimitiveType::Lines => MTLPrimitiveType::Line,
-		}
-	}
+    fn from(primitive_type: PrimitiveType) -> Self {
+        match primitive_type {
+            PrimitiveType::Triangles => MTLPrimitiveType::Triangle,
+            PrimitiveType::Lines => MTLPrimitiveType::Line,
+            PrimitiveType::Points => MTLPrimitiveType::Point,
+        }
+    }
 }
 
 impl From<TextureFormat> for MTLPixelFormat {
