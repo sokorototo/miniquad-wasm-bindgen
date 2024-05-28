@@ -27,7 +27,7 @@ pub struct X11Display {
 	repeated_keycodes: [bool; 256],
 	empty_cursor: libx11::Cursor,
 	cursor_cache: HashMap<CursorIcon, libx11::Cursor>,
-    update_requested: bool,
+	update_requested: bool,
 }
 
 impl X11Display {
@@ -267,9 +267,9 @@ impl X11Display {
 		use Request::*;
 		unsafe {
 			match request {
-                ScheduleUpdate => {
-                    self.update_requested = true;
-                }
+				ScheduleUpdate => {
+					self.update_requested = true;
+				}
 				SetCursorGrab(grab) => self.set_cursor_grab(self.window, grab),
 				ShowMouse(show) => self.show_mouse(show),
 				SetMouseCursor(icon) => self.set_cursor(self.window, Some(icon)),
@@ -314,7 +314,7 @@ where
 	crate::set_display(NativeDisplayData {
 		high_dpi: conf.high_dpi,
 		dpi_scale: display.libx11.update_system_dpi(display.display),
-        blocking_event_loop: conf.platform.blocking_event_loop,
+		blocking_event_loop: conf.platform.blocking_event_loop,
 		..NativeDisplayData::new(w as _, h as _, tx, clipboard)
 	});
 	if conf.fullscreen {
@@ -330,14 +330,14 @@ where
 		glx.make_current(display.display, glx_window, glx_context);
 
 		let mut count = (display.libx11.XPending)(display.display);
-        let block_on_wait = conf.platform.blocking_event_loop && !display.update_requested;
-        if block_on_wait {
-            // if there are multiple events pending, it is still desired to process
-            // them all in one frame.
-            // However, when there are no events in the queue, +1 hack
-            // will block main thread and release the cpu until the new event.
-            count = count + 1;
-        }
+		let block_on_wait = conf.platform.blocking_event_loop && !display.update_requested;
+		if block_on_wait {
+			// if there are multiple events pending, it is still desired to process
+			// them all in one frame.
+			// However, when there are no events in the queue, +1 hack
+			// will block main thread and release the cpu until the new event.
+			count = count + 1;
+		}
 
 		for _ in 0..count {
 			let mut xevent = _XEvent { type_0: 0 };
@@ -345,14 +345,14 @@ where
 			display.process_event(&mut xevent, &mut *event_handler);
 		}
 
-        if !conf.platform.blocking_event_loop || display.update_requested {
-            display.update_requested = false;
-    		event_handler.update();
-    		event_handler.draw();
+		if !conf.platform.blocking_event_loop || display.update_requested {
+			display.update_requested = false;
+			event_handler.update();
+			event_handler.draw();
 
-    		glx.swap_buffers(display.display, glx_window);
-    		(display.libx11.XFlush)(display.display);
-        }
+			glx.swap_buffers(display.display, glx_window);
+			(display.libx11.XFlush)(display.display);
+		}
 	}
 
 	glx.destroy_context(display.display, glx_window, glx_context);
@@ -398,7 +398,7 @@ where
 	crate::set_display(NativeDisplayData {
 		high_dpi: conf.high_dpi,
 		dpi_scale: display.libx11.update_system_dpi(display.display),
-        blocking_event_loop: conf.platform.blocking_event_loop,
+		blocking_event_loop: conf.platform.blocking_event_loop,
 		..NativeDisplayData::new(w as _, h as _, tx, clipboard)
 	});
 	if conf.fullscreen {
@@ -415,25 +415,25 @@ where
 		}
 
 		let mut count = (display.libx11.XPending)(display.display);
-        let block_on_wait = conf.platform.blocking_event_loop && !display.update_requested;
-        if block_on_wait {
-            // same thing as in glx loop, explained there
-            count = count + 1;
-        }
+		let block_on_wait = conf.platform.blocking_event_loop && !display.update_requested;
+		if block_on_wait {
+			// same thing as in glx loop, explained there
+			count = count + 1;
+		}
 		for _ in 0..count {
 			let mut xevent = _XEvent { type_0: 0 };
 			(display.libx11.XNextEvent)(display.display, &mut xevent);
 			display.process_event(&mut xevent, &mut *event_handler);
 		}
 
-        if !conf.platform.blocking_event_loop || display.update_requested {
-            display.update_requested = false;
-    		event_handler.update();
-    		event_handler.draw();
+		if !conf.platform.blocking_event_loop || display.update_requested {
+			display.update_requested = false;
+			event_handler.update();
+			event_handler.draw();
 
-    		(egl_lib.eglSwapBuffers.unwrap())(egl_display, egl_surface);
-    		(display.libx11.XFlush)(display.display);
-        }
+			(egl_lib.eglSwapBuffers.unwrap())(egl_display, egl_surface);
+			(display.libx11.XFlush)(display.display);
+		}
 	}
 
 	(display.libx11.XUnmapWindow)(display.display, display.window);
@@ -483,7 +483,7 @@ where
 			libxi,
 			repeated_keycodes: [false; 256],
 			cursor_cache: HashMap::new(),
-            update_requested: true,
+			update_requested: true,
 		};
 
 		display.libxi.query_xi_extension(&mut display.libx11, display.display);
