@@ -62,7 +62,11 @@ where
 
 	let mut webgl_attributes = WebGlContextAttributes::new();
 	webgl_attributes.alpha(conf.platform.framebuffer_alpha);
-	webgl_attributes.power_preference(WebGlPowerPreference::HighPerformance);
+	webgl_attributes.power_preference(if conf.platform.blocking_event_loop {
+		WebGlPowerPreference::LowPower
+	} else {
+		WebGlPowerPreference::HighPerformance
+	});
 	webgl_attributes.stencil(true);
 
 	// setup webgl2 context
