@@ -33,6 +33,8 @@ struct Mandelbrot {
 	zoom: f32,
 	center: (f32, f32),
 	action: Action,
+
+	frame: usize,
 }
 
 impl Mandelbrot {
@@ -78,6 +80,7 @@ impl Mandelbrot {
 			zoom: 1.0,
 			center: (0.0, 0.0),
 			action: Action::Idle,
+			frame: 0,
 		}
 	}
 	// Returns two floats (x and y) from -0.5 to 0.5, with (0.0, 0.0) being the center of the screen
@@ -94,6 +97,9 @@ impl Mandelbrot {
 
 impl EventHandler for Mandelbrot {
 	fn update(&mut self) {
+		self.frame += 1;
+		miniquad_wasm_bindgen::info!("Frame: {}", self.frame);
+
 		// zoom in/out
 		match self.action {
 			Action::ZoomingIn(x, y) => {
@@ -163,10 +169,13 @@ impl EventHandler for Mandelbrot {
 		} else if let MouseButton::Right = button {
 			self.action = Action::ZoomingOut(pos.0, pos.1);
 		}
+
+		window::schedule_update();
 	}
 
 	fn mouse_button_up_event(&mut self, _b: MouseButton, _x: f32, _y: f32) {
 		self.action = Action::Idle;
+		window::schedule_update();
 	}
 
 	fn mouse_motion_event(&mut self, x: f32, y: f32) {
@@ -181,6 +190,7 @@ impl EventHandler for Mandelbrot {
 			}
 			_ => {}
 		}
+		window::schedule_update();
 	}
 
 	fn touch_event(&mut self, phase: TouchPhase, _id: u64, x: f32, y: f32) {
@@ -197,11 +207,21 @@ impl EventHandler for Mandelbrot {
 				self.action = Action::Idle;
 			}
 		}
+		window::schedule_update();
 	}
 }
 
 fn main() {
-	miniquad_wasm_bindgen::start(Conf { high_dpi: true, ..Default::default() }, || Box::new(Mandelbrot::new()));
+	let mut platform = miniquad_wasm_bindgen::conf::PlatformSettings::default();
+	platform.blocking_event_loop = true;
+	miniquad_wasm_bindgen::start(
+		Conf {
+			platform,
+			high_dpi: true,
+			..Default::default()
+		},
+		|| Box::new(Mandelbrot::new()),
+	);
 }
 
 const SHADER_VERTEX: &str = r#"#version 100
