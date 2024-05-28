@@ -134,6 +134,11 @@ pub mod window {
 		d.high_dpi
 	}
 
+	pub fn blocking_event_loop() -> bool {
+		let d = native_display().lock().unwrap();
+		d.blocking_event_loop
+	}
+
 	/// This function simply quits the application without
 	/// giving the user a chance to intervene. Usually this might
 	/// be called when the user clicks the 'Ok' button in a 'Really Quit?'
@@ -155,6 +160,16 @@ pub mod window {
 	pub fn set_cursor_grab(grab: bool) {
 		let d = native_display().lock().unwrap();
 		d.native_requests.send(native::Request::SetCursorGrab(grab)).unwrap();
+	}
+
+	/// With `conf.platform.blocking_event_loop`, `schedule_update` called from an
+	/// event handler makes draw()/update() functions to be called without waiting
+	/// for a next event.
+	///
+	/// Does nothing if `conf.platform.blocking_event_loop` == `false`.
+	pub fn schedule_update() {
+		let d = native_display().lock().unwrap();
+		d.native_requests.send(native::Request::ScheduleUpdate).unwrap();
 	}
 
 	/// Show or hide the mouse cursor

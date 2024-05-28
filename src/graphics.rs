@@ -625,17 +625,19 @@ impl Default for Equation {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PrimitiveType {
-	Triangles,
-	Lines,
+    Triangles,
+    Lines,
+    Points,
 }
 
 impl From<PrimitiveType> for GLenum {
-	fn from(primitive_type: PrimitiveType) -> Self {
-		match primitive_type {
-			PrimitiveType::Triangles => GL_TRIANGLES,
-			PrimitiveType::Lines => GL_LINES,
-		}
-	}
+    fn from(primitive_type: PrimitiveType) -> Self {
+        match primitive_type {
+            PrimitiveType::Triangles => GL_TRIANGLES,
+            PrimitiveType::Lines => GL_LINES,
+            PrimitiveType::Points => GL_POINTS,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]

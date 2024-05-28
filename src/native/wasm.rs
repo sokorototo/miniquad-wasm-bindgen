@@ -62,7 +62,11 @@ where
 
 	let mut webgl_attributes = WebGlContextAttributes::new();
 	webgl_attributes.alpha(conf.platform.framebuffer_alpha);
-	webgl_attributes.power_preference(WebGlPowerPreference::HighPerformance);
+	webgl_attributes.power_preference(if conf.platform.blocking_event_loop {
+		WebGlPowerPreference::LowPower
+	} else {
+		WebGlPowerPreference::HighPerformance
+	});
 	webgl_attributes.stencil(true);
 
 	// setup webgl2 context
@@ -97,10 +101,10 @@ where
 	init_file_drop_events(&main_canvas);
 
 	// run event loop
-	event_loop(main_canvas, "default", rx);
+	event_loop(main_canvas, "default", rx, conf.platform.blocking_event_loop);
 }
 
-fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static str, rx: Receiver<Request>) {
+fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static str, rx: Receiver<Request>, block: bool) {
 	let event_handler = get_event_handler(None);
 	let mut next_cursor_css = last_cursor_css;
 
@@ -177,16 +181,22 @@ fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static
 					d.screen_position = (new_x as _, new_y as _);
 				}
 			}
+			Request::ScheduleUpdate if block => {
+				event_handler.update();
+				event_handler.draw();
+			}
 			_ => {}
 		}
 	}
 
 	// drive event handler implementation
-	event_handler.update();
-	event_handler.draw();
+	if !block {
+		event_handler.update();
+		event_handler.draw();
+	}
 
 	// in the words of Dj Khaled, another one!
-	let closure = Box::new(move || event_loop(main_canvas, next_cursor_css, rx));
+	let closure = Box::new(move || event_loop(main_canvas, next_cursor_css, rx, true));
 	let closure = Closure::once_into_js(closure);
 
 	if let Some(w) = web_sys::window() {
