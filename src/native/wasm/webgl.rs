@@ -689,7 +689,6 @@ pub unsafe fn glGetUniformLocation(program: GLuint, name: *const GLchar) -> GLin
 	-1 // Unable to find uniform
 }
 
-// TODO: Verify uniform code
 pub unsafe fn glUniform1i(location: GLint, v0: GLint) {
 	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
 	get_gl().uniform1i(UNIFORMS.get(&(location as u32)), v0)
