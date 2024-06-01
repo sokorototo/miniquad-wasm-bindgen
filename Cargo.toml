@@ -42,7 +42,10 @@ winapi = { version = "0.3", features = [
 
 [target.'cfg(target_os = "android")'.dependencies]
 libc = "0.2"
-ndk-sys = "0.2"
+ndk = "0.9"
+ndk-sys = "0.6"
+jni = "0.21"
+android-activity = {version="0.6.0", features=["native-activity"]}
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 objc = "0.2"
