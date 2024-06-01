@@ -10,23 +10,19 @@
 use crate::{
 	event::{EventHandler, KeyCode, KeyMods, TouchPhase},
 	native::{
-		egl::{self, LibEgl}, NativeDisplayData
+		android::keycodes::translate_keycode_ndk, egl::{self, LibEgl}, NativeDisplayData
 	},
 };
-
-use std::{cell::RefCell, sync::mpsc, thread};
 
 pub use crate::native::gl::{self, *};
 
 mod keycodes;
 
-use android_activity::{AndroidApp, MainEvent, PollEvent, WindowManagerFlags};
+use android_activity::{input::{KeyAction, MotionAction, MotionEvent}, AndroidApp, InputStatus, MainEvent, PollEvent, WindowManagerFlags};
+use android_activity::input::InputEvent;
 use jni::{objects::{JObject, JValue}, AttachGuard, JavaVM};
-use ndk::{event::{InputEvent, KeyAction}, native_activity::NativeActivity, native_window::NativeWindow};
 use libc::c_void;
 pub use ndk;
-
-pub mod ndk_utils;
 
 /// Short recap on how miniquad_wasm_bindgen on Android works
 /// There is a MainActivity, a normal Java activity
@@ -52,17 +48,6 @@ enum Message {
 	Destroy,
 }
 unsafe impl Send for Message {}
-
-thread_local! {
-	static MESSAGES_TX: RefCell<Option<mpsc::Sender<Message>>> = RefCell::new(None);
-}
-
-fn send_message(message: Message) {
-	MESSAGES_TX.with(|tx| {
-		let mut tx = tx.borrow_mut();
-		tx.as_mut().unwrap().send(message).unwrap();
-	})
-}
 
 static mut ACTIVITY: Option<*mut c_void> = None;
 static mut VM: Option<*mut c_void> = None;
@@ -186,12 +171,11 @@ impl MainThreadState {
 			Message::Pause => self.event_handler.window_minimized_event(),
 			Message::Resume => {
 				if self.fullscreen {
-					// let env = VM.expect("JavaVM should be avaiable before process_request")
-					// 	.attach_current_thread()
-					// 	.expect("Failed to attach JavaVM to current thread");
-					// unsafe {
-					// 	set_fullscreen(env, true);
-					// }
+					unsafe {
+						let vm = get_current_vm();
+						let mut env = attach_current_thread(&vm);
+						set_fullscreen(&mut env, true);
+					}
 				}
 
 				self.event_handler.window_restored_event()
@@ -231,7 +215,7 @@ impl MainThreadState {
 							JavaVM::from_raw(vm as _).unwrap()
 						};
 						let mut env = vm.attach_current_thread().expect("Failed to attach JavaVM to current thread");
-						env.call_method(JObject::from_raw(activity as _), "showKeyboard", "(Z)V", &[JValue::Int(show as _)]);
+						let _ =env.call_method(JObject::from_raw(activity as _), "showKeyboard", "(Z)V", &[JValue::Int(show as _)]);
 					}
 				},
 				_ => {}
@@ -239,37 +223,6 @@ impl MainThreadState {
 		}
 	}
 }
-
-/// Get the JNI Env by calling ndk's AttachCurrentThread
-///
-/// Safety note: This function is not exactly correct now, it should be fixed!
-///
-/// AttachCurrentThread should be called at least once for any given thread that
-/// wants to use the JNI and DetachCurrentThread should be called only once, when
-/// the thread stack is empty and the thread is about to stop
-///
-/// calling AttachCurrentThread from the same thread multiple time is very cheap
-///
-/// BUT! there is no DetachCurrentThread call right now, this code:
-/// `thread::spawn(|| attach_jni_env());` will lead to internal jni crash :/
-/// thread::spawn(|| { attach_jni_env(); loop {} }); is basically what miniquad_wasm_bindgen
-/// is doing. this is not correct, but works
-/// TODO: the problem here -
-/// TODO:   thread::spawn(|| { Attach(); .. Detach() }); will not work as well.
-/// TODO: JNI will check that thread's stack is still alive and will crash.
-///
-/// TODO: Figure how to get into the thread destructor to correctly call Detach
-/// TODO: (this should be a GH issue)
-/// TODO: for reference - grep for "pthread_setspecific" in SDL2 sources, SDL fixed it!
-// pub unsafe fn attach_jni_env() -> *mut jni_sys::JNIEnv {
-// 	let mut env: *mut jni_sys::JNIEnv = std::ptr::null_mut();
-// 	let attach_current_thread = (**VM).AttachCurrentThread.unwrap();
-
-// 	let res = attach_current_thread(VM, env as *mut _, std::ptr::null_mut());
-// 	assert!(res == 0);
-
-// 	env
-// }
 
 pub struct AndroidClipboard {}
 impl AndroidClipboard {
@@ -311,29 +264,19 @@ where
 	}
 	
 	let app = ANDROID_APP.clone().expect("init_quad_activity should be run before miniquad::start on android");
-
 	unsafe {
-		// Initialize the ACTIVITY and VM pointer
 		ACTIVITY = Some(app.activity_as_ptr());
 		VM = Some(app.vm_as_ptr());
 	}
 
+	app.set_window_flags(WindowManagerFlags::FULLSCREEN, WindowManagerFlags::empty());
+
 	if conf.fullscreen {
-		// TODO: Implement fullscreen
+		// TODO: Hide the navbar as well
 		let vm = get_current_vm();
 		let mut env = attach_current_thread(&vm);
 		set_fullscreen(&mut env, true);
 	}
-
-	// yeah, just adding Send to outer F will do it, but it will break the API on other backends
-	struct SendHack<F>(F);
-	unsafe impl<F> Send for SendHack<F> {}
-
-	let f = SendHack(f);
-
-	let (tx, rx) = mpsc::channel();
-
-	MESSAGES_TX.with(move |messages_tx| *messages_tx.borrow_mut() = Some(tx));
 
 	let mut libegl = LibEgl::try_load().expect("Cant load LibEGL");
 
@@ -346,7 +289,6 @@ where
 		app.poll_events(Some(std::time::Duration::from_millis(16)), |event| {
 			match event {
 				PollEvent::Main(main_event) => {
-					// log::info!("Main event: {:?}", main_event);
 					match main_event {
 						MainEvent::Destroy => { return; },
 						MainEvent::InitWindow { .. } => { display_avaiable = true; }
@@ -389,7 +331,7 @@ where
 		..NativeDisplayData::new(screen_width as _, screen_height as _, tx, clipboard)
 	});
 
-	let event_handler = f.0();
+	let event_handler = f();
 	let mut s = MainThreadState {
 		libegl,
 		egl_display,
@@ -408,6 +350,7 @@ where
 		},
 	};
 
+	let mut input_avaiable = false;
 	while !s.quit {
 		while let Ok(request) = requests_rx.try_recv() {
 			s.process_request(request);
@@ -425,7 +368,7 @@ where
 						MainEvent::Pause => {
 							s.process_message(Message::Pause);
 						},
-						MainEvent::Resume { loader, .. } => {
+						MainEvent::Resume { .. } => {
 							s.process_message(Message::Resume);
 						},
 						MainEvent::InitWindow { .. } => {
@@ -441,6 +384,12 @@ where
 								width: wnd.width(), 
 								height: wnd.height() 
 							});
+						},
+						MainEvent::TerminateWindow { .. } => {
+							s.process_message(Message::SurfaceDestroyed);
+						},
+						MainEvent::InputAvailable => {
+							input_avaiable = true;
 						}
 						_ => {}
 					}
@@ -449,9 +398,76 @@ where
 			};
 		});
 
-		s.frame();
+		if input_avaiable {
+			input_avaiable = false;
+			if let Ok(mut iter) = app.input_events_iter() {
+				loop {
+					let read_input = iter.next(|event| {
+						match event {
+							InputEvent::KeyEvent(key_event) => {
+								let keycode = key_event.key_code();
+								match key_event.action() {
+									KeyAction::Down => {
+										s.process_message(Message::KeyDown { 
+											keycode: translate_keycode_ndk(keycode)
+										});
+									},
+									KeyAction::Up | KeyAction::Multiple => {
+										s.process_message(Message::KeyUp { 
+											keycode: translate_keycode_ndk(keycode)
+										});
+									},
+									_ => ()
+								};
+							
+							},
+							InputEvent::MotionEvent(motion_event) => {
+								let ind = motion_event.pointer_index();
+								let ptr = motion_event.pointer_at_index(ind);
+								// TODO: It seems like MotionEvent can also come from java action UI interactions. Im ignoring them here
+								let phase = match motion_event.action() {
+									MotionAction::Cancel => {
+										Some(TouchPhase::Cancelled)
+									},
+									MotionAction::PointerDown => {
+										Some(TouchPhase::Started)
+									},
+									MotionAction::PointerUp => {
+										Some(TouchPhase::Ended)
+									},
+									MotionAction::Move => {
+										Some(TouchPhase::Ended)
+									},
+									_ => None
+								};
+								if let Some(phase) = phase {
+									// TODO: Touch event here is bugged, can't grab multiple pointers currently.
+									s.process_message(Message::Touch {
+										phase, 
+										touch_id: ptr.pointer_index() as u64, 
+										x: ptr.x(), 
+										y: ptr.y() 
+									});
+								}
+							
+							},
+							InputEvent::TextEvent(text) => {
+							
+							},
+							_ => { }
+						};
+						InputStatus::Handled
+					});
+		
+					if !read_input {
+						break;
+					}
+		
+				}
+			}
+		}
 
-		thread::yield_now();
+		s.frame();
 	}
 
 	(s.libegl.eglMakeCurrent.unwrap())(s.egl_display, std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut());
@@ -556,7 +572,7 @@ where
 
 unsafe fn set_fullscreen(env: &mut AttachGuard<'_>, fullscreen: bool) {
 	let activity = JObject::from_raw(get_current_activity() as _);
-	env.call_method(activity, "setFullScreen", "(Z)V", &[JValue::Int(fullscreen as i32)]);
+	let _ = env.call_method(activity, "setFullScreen", "(Z)V", &[JValue::Int(fullscreen as i32)]);
 }
 
 #[repr(C)]
