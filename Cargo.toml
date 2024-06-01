@@ -19,7 +19,7 @@ categories = ["rendering::graphics-api"]
 
 [[bin]]
 name = "web"
-path = "examples/mandelbrot.rs"
+path = "examples/post_processing.rs"
 
 [features]
 log-impl = []
