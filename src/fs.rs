@@ -52,27 +52,30 @@ pub fn load_file<F: FnOnce(Response) + 'static>(path: &str, on_loaded: F) {
 
 #[cfg(target_os = "android")]
 fn load_file_android<F: FnOnce(Response)>(path: &str, on_loaded: F) {
-	fn load_file_sync(path: &str) -> Response {
-		use crate::native;
+	// TODO: Fix this function
+	return;
 
-		let filename = std::ffi::CString::new(path).unwrap();
+	// fn load_file_sync(path: &str) -> Response {
+	// 	use crate::native;
 
-		let mut data: native::android_asset = unsafe { std::mem::zeroed() };
+	// 	let filename = std::ffi::CString::new(path).unwrap();
 
-		unsafe { native::android::load_asset(filename.as_ptr(), &mut data as _) };
+	// 	let mut data: native::AndroidAsset = unsafe { std::mem::zeroed() };
 
-		if data.content.is_null() == false {
-			let slice = unsafe { std::slice::from_raw_parts(data.content, data.content_length as _) };
-			let response = slice.iter().map(|c| *c as _).collect::<Vec<_>>();
-			Ok(response)
-		} else {
-			Err(Error::AndroidAssetLoadingError)
-		}
-	}
+	// 	unsafe { native::android::load_asset(filename.as_ptr(), &mut data as _) };
 
-	let response = load_file_sync(path);
+	// 	if data.content.is_null() == false {
+	// 		let slice = unsafe { std::slice::from_raw_parts(data.content, data.content_length as _) };
+	// 		let response = slice.iter().map(|c| *c as _).collect::<Vec<_>>();
+	// 		Ok(response)
+	// 	} else {
+	// 		Err(Error::AndroidAssetLoadingError)
+	// 	}
+	// }
 
-	on_loaded(response);
+	// let response = load_file_sync(path);
+
+	// on_loaded(response);
 }
 
 #[cfg(target_arch = "wasm32")]
