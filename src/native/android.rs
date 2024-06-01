@@ -21,23 +21,12 @@ pub use crate::native::gl::{self, *};
 mod keycodes;
 
 use android_activity::{AndroidApp, MainEvent, PollEvent, WindowManagerFlags};
-use jni::{objects::JValue, AttachGuard};
+use jni::{objects::{JObject, JValue}, AttachGuard, JavaVM};
 use ndk::{event::{InputEvent, KeyAction}, native_activity::NativeActivity, native_window::NativeWindow};
 use libc::c_void;
 pub use ndk;
 
 pub mod ndk_utils;
-
-// #[no_mangle]
-// pub unsafe extern "C" fn JNI_OnLoad(vm: *mut ndk_sys::JavaVM, _: std::ffi::c_void) -> ndk_sys::jint {
-// 	VM = vm as *mut _ as _;
-
-// 	ndk_sys::JNI_VERSION_1_6 as _
-// }
-
-// extern "C" {
-// 	fn quad_main();
-// }
 
 /// Short recap on how miniquad_wasm_bindgen on Android works
 /// There is a MainActivity, a normal Java activity
@@ -78,6 +67,19 @@ fn send_message(message: Message) {
 static mut ACTIVITY: Option<*mut c_void> = None;
 static mut VM: Option<*mut c_void> = None;
 static mut ANDROID_APP: Option<AndroidApp> = None; 
+
+unsafe fn attach_current_thread<'a>(vm: &'a JavaVM) -> AttachGuard<'a> {
+	vm.attach_current_thread().expect("Failed to attach JavaVM to the current thread")
+}
+
+unsafe fn get_current_vm() -> JavaVM {
+	let vm = VM.expect("JavaVM should be avaiable before process_request");
+	JavaVM::from_raw(vm as _).unwrap()
+}
+
+unsafe fn get_current_activity() -> *mut c_void {
+	ACTIVITY.expect("Activity is None at this moment of runtime")
+}
 
 pub unsafe fn console_debug(msg: *const ::std::os::raw::c_char) {
 	ndk_sys::__android_log_write(ndk_sys::android_LogPriority::ANDROID_LOG_DEBUG.0 as _, b"SAPP\0".as_ptr() as _, msg);
@@ -217,21 +219,20 @@ impl MainThreadState {
 		unsafe {
 			match request {
 				SetFullscreen(fullscreen) => {
-					// let env = VM.expect("JavaVM should be avaiable before process_request")
-					// 	.attach_current_thread()
-					// 	.expect("Failed to attach JavaVM to current thread");
-					// unsafe {
-					// 	set_fullscreen(env, fullscreen);
-					// }
-					// self.fullscreen = fullscreen;
+					let vm = get_current_vm();
+					let mut env = attach_current_thread(&vm);
+					set_fullscreen(&mut env, fullscreen);
+					self.fullscreen = fullscreen;
 				}
-				ShowKeyboard(show) => unsafe {
-					// let mut env = VM.expect("JavaVM should be avaiable before process_request")
-					// 	.attach_current_thread()
-					// 	.expect("Failed to attach JavaVM to current thread");
-					// if let Some(ref mut activity) = ACTIVITY {
-					// 	env.call_method(activity.activity(), "showKeyboard", "(Z)V", &[JValue::Int(show as _)]);
-					// }
+				ShowKeyboard(show) => {
+					if let Some(activity) = ACTIVITY {
+						let vm = {
+							let vm = VM.expect("JavaVM should be avaiable before process_request");
+							JavaVM::from_raw(vm as _).unwrap()
+						};
+						let mut env = vm.attach_current_thread().expect("Failed to attach JavaVM to current thread");
+						env.call_method(JObject::from_raw(activity as _), "showKeyboard", "(Z)V", &[JValue::Int(show as _)]);
+					}
 				},
 				_ => {}
 			}
@@ -295,117 +296,6 @@ pub fn init_android_activity(app: AndroidApp) {
 	}
 }
 
-// pub unsafe fn run<F>(conf: crate::conf::Conf, f: F)
-// where
-// 	F: 'static + FnOnce() -> Box<dyn EventHandler>,
-// {
-// 	{
-// 		use std::ffi::CString;
-// 		use std::panic;
-
-// 		panic::set_hook(Box::new(|info| {
-// 			let msg = CString::new(format!("{:?}", info)).unwrap_or_else(|_| CString::new(format!("MALFORMED ERROR MESSAGE {:?}", info.location())).unwrap());
-// 			console_error(msg.as_ptr());
-// 		}));
-// 	}
-
-// 	if conf.fullscreen {
-// 		let env = attach_jni_env();
-// 		set_fullscreen(env, true);
-// 	}
-
-// 	// yeah, just adding Send to outer F will do it, but it will brake the API
-// 	// in other backends
-// 	struct SendHack<F>(F);
-// 	unsafe impl<F> Send for SendHack<F> {}
-
-// 	let f = SendHack(f);
-
-// 	let (tx, rx) = mpsc::channel();
-
-// 	MESSAGES_TX.with(move |messages_tx| *messages_tx.borrow_mut() = Some(tx));
-
-// 	thread::spawn(move || {
-// 		let mut libegl = LibEgl::try_load().expect("Cant load LibEGL");
-
-// 		// skip all the messages until android will be able to actually open a window
-// 		//
-// 		// sometimes before launching an app android will show a permission dialog
-// 		// it is important to create GL context only after a first SurfaceChanged
-// 		let (window, screen_width, screen_height) = 'a: loop {
-// 			match rx.try_recv() {
-// 				Ok(Message::SurfaceChanged { window, width, height }) => {
-// 					break 'a (window, width as f32, height as f32);
-// 				}
-// 				_ => {}
-// 			}
-// 		};
-
-// 		let (egl_context, egl_config, egl_display) =
-// 			crate::native::egl::create_egl_context(&mut libegl, std::ptr::null_mut() /* EGL_DEFAULT_DISPLAY */, conf.platform.framebuffer_alpha, conf.sample_count).expect("Cant create EGL context");
-
-// 		assert!(!egl_display.is_null());
-// 		assert!(!egl_config.is_null());
-
-// 		crate::native::gl::load_gl_funcs(|proc| {
-// 			let name = std::ffi::CString::new(proc).unwrap();
-// 			libegl.eglGetProcAddress.expect("non-null function pointer")(name.as_ptr() as _)
-// 		});
-
-// 		let surface = (libegl.eglCreateWindowSurface.unwrap())(egl_display, egl_config, window as _, std::ptr::null_mut());
-
-// 		if (libegl.eglMakeCurrent.unwrap())(egl_display, surface, surface, egl_context) == 0 {
-// 			panic!();
-// 		}
-
-// 		let (tx, requests_rx) = std::sync::mpsc::channel();
-// 		let clipboard = Box::new(AndroidClipboard::new());
-// 		crate::set_display(NativeDisplayData {
-// 			high_dpi: conf.high_dpi,
-// 			..NativeDisplayData::new(screen_width as _, screen_height as _, tx, clipboard)
-// 		});
-
-// 		let event_handler = f.0();
-// 		let mut s = MainThreadState {
-// 			libegl,
-// 			egl_display,
-// 			egl_config,
-// 			egl_context,
-// 			surface,
-// 			window,
-// 			event_handler,
-// 			quit: false,
-// 			fullscreen: conf.fullscreen,
-// 			keymods: KeyMods {
-// 				shift: false,
-// 				ctrl: false,
-// 				alt: false,
-// 				logo: false,
-// 			},
-// 		};
-
-// 		while !s.quit {
-// 			while let Ok(request) = requests_rx.try_recv() {
-// 				s.process_request(request);
-// 			}
-
-// 			// process all the messages from the main thread
-// 			while let Ok(msg) = rx.try_recv() {
-// 				s.process_message(msg);
-// 			}
-
-// 			s.frame();
-
-// 			thread::yield_now();
-// 		}
-
-// 		(s.libegl.eglMakeCurrent.unwrap())(s.egl_display, std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut());
-// 		(s.libegl.eglDestroySurface.unwrap())(s.egl_display, s.surface);
-// 		(s.libegl.eglDestroyContext.unwrap())(s.egl_display, s.egl_context);
-// 		(s.libegl.eglTerminate.unwrap())(s.egl_display);
-// 	});
-// }
-
 pub unsafe fn run<F>(conf: crate::conf::Conf, f: F)
 where
 	F: 'static + FnOnce() -> Box<dyn EventHandler>,
@@ -430,8 +320,9 @@ where
 
 	if conf.fullscreen {
 		// TODO: Implement fullscreen
-		// let env = attach_jni_env();
-		// set_fullscreen(env, true);
+		let vm = get_current_vm();
+		let mut env = attach_current_thread(&vm);
+		set_fullscreen(&mut env, true);
 	}
 
 	// yeah, just adding Send to outer F will do it, but it will break the API on other backends
@@ -558,11 +449,6 @@ where
 			};
 		});
 
-		// process all the messages from the main thread
-		// while let Ok(msg) = rx.try_recv() {
-		// 	s.process_message(msg);
-		// }
-
 		s.frame();
 
 		thread::yield_now();
@@ -668,11 +554,10 @@ where
 // 	send_message(Message::Character { character: character as u32 });
 // }
 
-// unsafe fn set_fullscreen(env: AttachGuard<'static>, fullscreen: bool) {
-// 	if let Some(activity) = ACTIVITY {
-// 		env.call_method(activity.activity() as _, "setFullScreen", "(Z)V", &[JValue::Int(fullscreen as i32)]);
-// 	}
-// }
+unsafe fn set_fullscreen(env: &mut AttachGuard<'_>, fullscreen: bool) {
+	let activity = JObject::from_raw(get_current_activity() as _);
+	env.call_method(activity, "setFullScreen", "(Z)V", &[JValue::Int(fullscreen as i32)]);
+}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
