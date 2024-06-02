@@ -1,5 +1,6 @@
 #[cfg(target_os = "ios")]
 use crate::native::ios;
+use crate::native::android;
 
 /// A file-system loading error.
 ///
@@ -52,30 +53,16 @@ pub fn load_file<F: FnOnce(Response) + 'static>(path: &str, on_loaded: F) {
 
 #[cfg(target_os = "android")]
 fn load_file_android<F: FnOnce(Response)>(path: &str, on_loaded: F) {
-	// TODO: Fix this function
-	return;
+	fn load_file_sync(path: &str) -> Response {
+		let filename = std::ffi::CString::new(path).unwrap();
+		match unsafe { android::load_asset(&filename) } {
+			Some(data) => Ok(data),
+			None => Err(Error::AndroidAssetLoadingError)
+		}
+	}
 
-	// fn load_file_sync(path: &str) -> Response {
-	// 	use crate::native;
-
-	// 	let filename = std::ffi::CString::new(path).unwrap();
-
-	// 	let mut data: native::AndroidAsset = unsafe { std::mem::zeroed() };
-
-	// 	unsafe { native::android::load_asset(filename.as_ptr(), &mut data as _) };
-
-	// 	if data.content.is_null() == false {
-	// 		let slice = unsafe { std::slice::from_raw_parts(data.content, data.content_length as _) };
-	// 		let response = slice.iter().map(|c| *c as _).collect::<Vec<_>>();
-	// 		Ok(response)
-	// 	} else {
-	// 		Err(Error::AndroidAssetLoadingError)
-	// 	}
-	// }
-
-	// let response = load_file_sync(path);
-
-	// on_loaded(response);
+	let response = load_file_sync(path);
+	on_loaded(response);
 }
 
 #[cfg(target_arch = "wasm32")]

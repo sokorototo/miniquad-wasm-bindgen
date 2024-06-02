@@ -1,10 +1,12 @@
+use std::{ffi::CStr, io::Read, sync::OnceLock};
+
 /// This implementation will be way heavier than the original miniquad solution, since it uses 
-/// [`android_activity`](https://docs.rs/android-activity/0.6.0/android_activity/index.html) instead.
+/// [`android_activity`](https://docs.rs/android-activity/0.6.0/android_activity/index.html).
 /// 
 /// It's unfortunately unavoidable, if `miniquad-wasm-bindgen` wants to be highly portable with well maintained crates.
-/// This gives more freedom to the end user as well.
+/// This though, gives more freedom to the end user.
 /// 
-/// ! Important! This implementation uses native_activity. Changed to make it more customizable can be made in the future.
+/// **Important! This implementation uses the android native activity. Changes to make it more customizable can be made in the future.**
 
 
 use crate::{
@@ -14,15 +16,14 @@ use crate::{
 	},
 };
 
-pub use crate::native::gl::{self, *};
-
 mod keycodes;
 
-use android_activity::{input::{KeyAction, MotionAction, MotionEvent}, AndroidApp, InputStatus, MainEvent, PollEvent, WindowManagerFlags};
+use android_activity::{input::{KeyAction, MotionAction}, AndroidApp, InputStatus, MainEvent, PollEvent, WindowManagerFlags};
 use android_activity::input::InputEvent;
 use jni::{objects::{JObject, JValue}, AttachGuard, JavaVM};
 use libc::c_void;
 pub use ndk;
+use ndk::asset::AssetManager;
 
 /// Short recap on how miniquad_wasm_bindgen on Android works
 /// There is a MainActivity, a normal Java activity
@@ -36,8 +37,8 @@ pub use ndk;
 /// Message enum is used to send data from the callbacks to the drawing thread.
 #[derive(Debug)]
 enum Message {
-	SurfaceChanged { window: *mut ndk_sys::ANativeWindow, width: i32, height: i32 },
-	SurfaceCreated { window: *mut ndk_sys::ANativeWindow },
+	SurfaceChanged,
+	SurfaceCreated,
 	SurfaceDestroyed,
 	Touch { phase: TouchPhase, touch_id: u64, x: f32, y: f32 },
 	Character { character: u32 },
@@ -47,38 +48,36 @@ enum Message {
 	Resume,
 	Destroy,
 }
-unsafe impl Send for Message {}
 
-static mut ACTIVITY: Option<*mut c_void> = None;
-static mut VM: Option<*mut c_void> = None;
-static mut ANDROID_APP: Option<AndroidApp> = None; 
+static ANDROID_APP: OnceLock<AndroidApp> = OnceLock::new();
+static ASSET_MANAGER: OnceLock<AssetManager> = OnceLock::new();
+
+/// Initialization method that should be called before [`miniquad::start`](https://docs.rs/miniquad/latest/miniquad/fn.start.html).
+/// Mobile development on rust has evolved, and now windowing crates should require the user provided `android_activity` [`AndroidApp`] handle
+/// to manage said activities.
+/// 
+/// Only use this function from the main thread
+pub fn init_android_activity(app: AndroidApp) {
+	let _ = ANDROID_APP.set(app);
+}
 
 unsafe fn attach_current_thread<'a>(vm: &'a JavaVM) -> AttachGuard<'a> {
 	vm.attach_current_thread().expect("Failed to attach JavaVM to the current thread")
 }
 
-unsafe fn get_current_vm() -> JavaVM {
-	let vm = VM.expect("JavaVM should be avaiable before process_request");
-	JavaVM::from_raw(vm as _).unwrap()
-}
-
-unsafe fn get_current_activity() -> *mut c_void {
-	ACTIVITY.expect("Activity is None at this moment of runtime")
-}
-
-pub unsafe fn console_debug(msg: *const ::std::os::raw::c_char) {
+pub unsafe fn console_debug(msg: *const std::os::raw::c_char) {
 	ndk_sys::__android_log_write(ndk_sys::android_LogPriority::ANDROID_LOG_DEBUG.0 as _, b"SAPP\0".as_ptr() as _, msg);
 }
 
-pub unsafe fn console_info(msg: *const ::std::os::raw::c_char) {
+pub unsafe fn console_info(msg: *const std::os::raw::c_char) {
 	ndk_sys::__android_log_write(ndk_sys::android_LogPriority::ANDROID_LOG_INFO.0 as _, b"SAPP\0".as_ptr() as _, msg);
 }
 
-pub unsafe fn console_warn(msg: *const ::std::os::raw::c_char) {
+pub unsafe fn console_warn(msg: *const std::os::raw::c_char) {
 	ndk_sys::__android_log_write(ndk_sys::android_LogPriority::ANDROID_LOG_WARN.0 as _, b"SAPP\0".as_ptr() as _, msg);
 }
 
-pub unsafe fn console_error(msg: *const ::std::os::raw::c_char) {
+pub unsafe fn console_error(msg: *const std::os::raw::c_char) {
 	ndk_sys::__android_log_write(ndk_sys::android_LogPriority::ANDROID_LOG_ERROR.0 as _, b"SAPP\0".as_ptr() as _, msg);
 }
 
@@ -120,17 +119,24 @@ impl MainThreadState {
 		assert!(res != 0);
 	}
 
-	fn process_message(&mut self, msg: Message) {
+	fn process_message(&mut self, app: &AndroidApp, msg: Message) {
 		match msg {
-			Message::SurfaceCreated { window } => unsafe {
-				self.update_surface(window);
+			Message::SurfaceCreated => {
+				let wnd = app.native_window().unwrap();
+
+				unsafe {
+					self.update_surface(wnd.ptr().as_ptr());
+				}
 			},
 			Message::SurfaceDestroyed => unsafe {
 				self.destroy_surface();
 			},
-			Message::SurfaceChanged { window, width, height } => {
+			Message::SurfaceChanged => {
+				let wnd = app.native_window().unwrap();
+				let (width, height) = (wnd.width(), wnd.height());
+
 				unsafe {
-					self.update_surface(window);
+					self.update_surface(wnd.ptr().as_ptr());
 				}
 
 				{
@@ -171,10 +177,11 @@ impl MainThreadState {
 			Message::Pause => self.event_handler.window_minimized_event(),
 			Message::Resume => {
 				if self.fullscreen {
+
 					unsafe {
-						let vm = get_current_vm();
+						let vm = JavaVM::from_raw(app.vm_as_ptr() as _).expect("Android App's vm pointer should be valid");
 						let mut env = attach_current_thread(&vm);
-						set_fullscreen(&mut env, true);
+						set_fullscreen(app.activity_as_ptr(), &mut env, true);
 					}
 				}
 
@@ -198,28 +205,19 @@ impl MainThreadState {
 		}
 	}
 
-	fn process_request(&mut self, request: crate::native::Request) {
-		use crate::native::Request::*;
-		unsafe {
-			match request {
-				SetFullscreen(fullscreen) => {
-					let vm = get_current_vm();
-					let mut env = attach_current_thread(&vm);
-					set_fullscreen(&mut env, fullscreen);
-					self.fullscreen = fullscreen;
-				}
-				ShowKeyboard(show) => {
-					if let Some(activity) = ACTIVITY {
-						let vm = {
-							let vm = VM.expect("JavaVM should be avaiable before process_request");
-							JavaVM::from_raw(vm as _).unwrap()
-						};
-						let mut env = vm.attach_current_thread().expect("Failed to attach JavaVM to current thread");
-						let _ =env.call_method(JObject::from_raw(activity as _), "showKeyboard", "(Z)V", &[JValue::Int(show as _)]);
-					}
-				},
-				_ => {}
+	unsafe fn process_request(&mut self, vm: &mut JavaVM, activity: *mut c_void, request: crate::native::Request) {
+		use crate::native::Request;
+		match request {
+			Request::SetFullscreen(fullscreen) => {
+				let mut env = attach_current_thread(&vm);
+				set_fullscreen(activity, &mut env, fullscreen);
+				self.fullscreen = fullscreen;
 			}
+			Request::ShowKeyboard(show) => {
+				let mut env = vm.attach_current_thread().expect("Failed to attach JavaVM to current thread");
+				let _ = env.call_method(JObject::from_raw(activity as _), "showKeyboard", "(Z)V", &[JValue::Int(show as _)]);
+			},
+			_ => {}
 		}
 	}
 }
@@ -238,17 +236,6 @@ impl crate::native::Clipboard for AndroidClipboard {
 	fn set(&mut self, data: &str) {}
 }
 
-/// Initialization method that should be called before [`miniquad::start`](https://docs.rs/miniquad/latest/miniquad/fn.start.html).
-/// Mobile development on rust has evolved, and now windowing crates should require the user provided `android_activity` [`AndroidApp`] handle
-/// to manage said activities.
-/// 
-/// Only use this function from the main thread.
-pub fn init_android_activity(app: AndroidApp) {
-	unsafe {
-		ANDROID_APP = Some(app);
-	}
-}
-
 pub unsafe fn run<F>(conf: crate::conf::Conf, f: F)
 where
 	F: 'static + FnOnce() -> Box<dyn EventHandler>,
@@ -263,19 +250,18 @@ where
 		}));
 	}
 	
-	let app = ANDROID_APP.clone().expect("init_quad_activity should be run before miniquad::start on android");
-	unsafe {
-		ACTIVITY = Some(app.activity_as_ptr());
-		VM = Some(app.vm_as_ptr());
-	}
+	let app = ANDROID_APP.get().expect("init_android_activity should be run before miniquad::start on android");
+	let _ = ASSET_MANAGER.set(app.asset_manager());
+
+	let mut vm = unsafe { JavaVM::from_raw(app.vm_as_ptr() as _).expect("VM pointer should be valid") };
+	let activity = app.activity_as_ptr();
+
 
 	app.set_window_flags(WindowManagerFlags::FULLSCREEN, WindowManagerFlags::empty());
-
 	if conf.fullscreen {
 		// TODO: Hide the navbar as well
-		let vm = get_current_vm();
 		let mut env = attach_current_thread(&vm);
-		set_fullscreen(&mut env, true);
+		set_fullscreen(activity, &mut env, true);
 	}
 
 	let mut libegl = LibEgl::try_load().expect("Cant load LibEGL");
@@ -349,44 +335,35 @@ where
 			logo: false,
 		},
 	};
-
+	let mut messages: Vec<Message> = Vec::with_capacity(100);
 	let mut input_avaiable = false;
 	while !s.quit {
 		while let Ok(request) = requests_rx.try_recv() {
-			s.process_request(request);
+			s.process_request(&mut vm, activity, request);
 		}
 
 		// ! 16 millis here is a magic number that should be changed
 		app.poll_events(Some(std::time::Duration::from_millis(16)), |event| {
 			match event {
 				PollEvent::Main(main_event) => {
-					// log::info!("Main event: {:?}", main_event);
 					match main_event {
 						MainEvent::Destroy => { 
-							s.process_message(Message::Destroy);
+							messages.push(Message::Destroy);
 						},
 						MainEvent::Pause => {
-							s.process_message(Message::Pause);
+							messages.push(Message::Pause);
 						},
 						MainEvent::Resume { .. } => {
-							s.process_message(Message::Resume);
+							messages.push(Message::Resume);
 						},
 						MainEvent::InitWindow { .. } => {
-							let wnd = app.native_window().unwrap();
-							s.process_message(Message::SurfaceCreated { 
-								window: wnd.ptr().as_ptr()
-							});
+							messages.push(Message::SurfaceCreated);
 						},
 						MainEvent::WindowResized { .. } => {
-							let wnd = app.native_window().unwrap();
-							s.process_message(Message::SurfaceChanged { 
-								window: wnd.ptr().as_mut(), 
-								width: wnd.width(), 
-								height: wnd.height() 
-							});
+							messages.push(Message::SurfaceChanged);
 						},
 						MainEvent::TerminateWindow { .. } => {
-							s.process_message(Message::SurfaceDestroyed);
+							messages.push(Message::SurfaceDestroyed);
 						},
 						MainEvent::InputAvailable => {
 							input_avaiable = true;
@@ -408,12 +385,12 @@ where
 								let keycode = key_event.key_code();
 								match key_event.action() {
 									KeyAction::Down => {
-										s.process_message(Message::KeyDown { 
+										messages.push(Message::KeyDown { 
 											keycode: translate_keycode_ndk(keycode)
 										});
 									},
 									KeyAction::Up | KeyAction::Multiple => {
-										s.process_message(Message::KeyUp { 
+										messages.push(Message::KeyUp { 
 											keycode: translate_keycode_ndk(keycode)
 										});
 									},
@@ -426,23 +403,15 @@ where
 								let ptr = motion_event.pointer_at_index(ind);
 								// TODO: It seems like MotionEvent can also come from java action UI interactions. Im ignoring them here
 								let phase = match motion_event.action() {
-									MotionAction::Cancel => {
-										Some(TouchPhase::Cancelled)
-									},
-									MotionAction::PointerDown => {
-										Some(TouchPhase::Started)
-									},
-									MotionAction::PointerUp => {
-										Some(TouchPhase::Ended)
-									},
-									MotionAction::Move => {
-										Some(TouchPhase::Ended)
-									},
+									MotionAction::Cancel => Some(TouchPhase::Cancelled),
+									MotionAction::PointerDown => Some(TouchPhase::Started),
+									MotionAction::PointerUp => Some(TouchPhase::Ended),
+									MotionAction::Move => Some(TouchPhase::Ended),
 									_ => None
 								};
 								if let Some(phase) = phase {
 									// TODO: Touch event here is bugged, can't grab multiple pointers currently.
-									s.process_message(Message::Touch {
+									messages.push(Message::Touch {
 										phase, 
 										touch_id: ptr.pointer_index() as u64, 
 										x: ptr.x(), 
@@ -458,13 +427,15 @@ where
 						};
 						InputStatus::Handled
 					});
-		
-					if !read_input {
+					if !read_input { 
 						break;
 					}
-		
 				}
 			}
+		}
+
+		for message in messages.drain(..) {
+			s.process_message(&app, message);
 		}
 
 		s.frame();
@@ -476,142 +447,35 @@ where
 	(s.libegl.eglTerminate.unwrap())(s.egl_display);
 }
 
-// #[no_mangle]
-// extern "C" fn jni_on_load(vm: *mut std::ffi::c_void) {
-// 	unsafe {
-// 		VM = vm as _;
-// 	}
-// }
-
-// unsafe fn create_native_window(surface: ndk_sys::jobject) -> *mut ndk_sys::ANativeWindow {
-// 	let env = attach_jni_env();
-
-// 	ndk_sys::ANativeWindow_fromSurface(env, surface)
-// }
-
-// #[no_mangle]
-// pub unsafe extern "C" fn Java_quad_1native_QuadNative_activityOnCreate(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, activity: ndk_sys::jobject) {
-// 	let env = attach_jni_env();
-// 	ACTIVITY = (**env).NewGlobalRef.unwrap()(env, activity);
-// 	quad_main();
-// }
-
-// #[no_mangle]
-// unsafe extern "C" fn Java_quad_1native_QuadNative_activityOnResume(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject) {
-// 	send_message(Message::Resume);
-// }
-
-// #[no_mangle]
-// unsafe extern "C" fn Java_quad_1native_QuadNative_activityOnPause(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject) {
-// 	send_message(Message::Pause);
-// }
-
-// #[no_mangle]
-// unsafe extern "C" fn Java_quad_1native_QuadNative_activityOnDestroy(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject) {
-// 	send_message(Message::Destroy);
-// }
-
-// #[no_mangle]
-// extern "C" fn Java_quad_1native_QuadNative_surfaceOnSurfaceCreated(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, surface: ndk_sys::jobject) {
-// 	let window = unsafe { create_native_window(surface) };
-// 	send_message(Message::SurfaceCreated { window });
-// }
-
-// #[no_mangle]
-// extern "C" fn Java_quad_1native_QuadNative_surfaceOnSurfaceDestroyed(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject) {
-// 	send_message(Message::SurfaceDestroyed);
-// }
-
-// #[no_mangle]
-// extern "C" fn Java_quad_1native_QuadNative_surfaceOnSurfaceChanged(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, surface: ndk_sys::jobject, width: ndk_sys::jint, height: ndk_sys::jint) {
-// 	let window = unsafe { create_native_window(surface) };
-
-// 	send_message(Message::SurfaceChanged {
-// 		window,
-// 		width: width as _,
-// 		height: height as _,
-// 	});
-// }
-
-// #[no_mangle]
-// extern "C" fn Java_quad_1native_QuadNative_surfaceOnTouch(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, touch_id: ndk_sys::jint, action: ndk_sys::jint, x: ndk_sys::jfloat, y: ndk_sys::jfloat) {
-// 	let phase = match action {
-// 		0 => TouchPhase::Moved,
-// 		1 => TouchPhase::Ended,
-// 		2 => TouchPhase::Started,
-// 		3 => TouchPhase::Cancelled,
-// 		x => panic!("Unsupported touch phase: {}", x),
-// 	};
-
-// 	send_message(Message::Touch {
-// 		phase,
-// 		touch_id: touch_id as _,
-// 		x: x as f32,
-// 		y: y as f32,
-// 	});
-// }
-
-// #[no_mangle]
-// extern "C" fn Java_quad_1native_QuadNative_surfaceOnKeyDown(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, keycode: ndk_sys::jint) {
-// 	let keycode = keycodes::translate_keycode(keycode as _);
-
-// 	send_message(Message::KeyDown { keycode });
-// }
-
-// #[no_mangle]
-// extern "C" fn Java_quad_1native_QuadNative_surfaceOnKeyUp(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, keycode: ndk_sys::jint) {
-// 	let keycode = keycodes::translate_keycode(keycode as _);
-
-// 	send_message(Message::KeyUp { keycode });
-// }
-
-// #[no_mangle]
-// extern "C" fn Java_quad_1native_QuadNative_surfaceOnCharacter(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, character: ndk_sys::jint) {
-// 	send_message(Message::Character { character: character as u32 });
-// }
-
-unsafe fn set_fullscreen(env: &mut AttachGuard<'_>, fullscreen: bool) {
-	let activity = JObject::from_raw(get_current_activity() as _);
+unsafe fn set_fullscreen(activity: *mut c_void, env: &mut AttachGuard<'_>, fullscreen: bool) {
+	let activity = JObject::from_raw(activity as _);
 	let _ = env.call_method(activity, "setFullScreen", "(Z)V", &[JValue::Int(fullscreen as i32)]);
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct AndroidAsset {
-	pub content: *mut ::std::os::raw::c_char,
-	pub content_length: ::std::os::raw::c_int,
-}
 
 // According to documentation, AAssetManager_fromJava is as available as an
 // AAssetManager_open, which was used before
 // For some reason it is missing fron ndk_sys binding
 
-// TODO: Implement asset loading
-// extern "C" {
-// 	pub fn AAssetManager_fromJava(env: *mut ndk_sys::JNIEnv, assetManager: ndk_sys::jobject) -> *mut ndk_sys::AAssetManager;
-// }
+pub(crate) fn load_asset(filepath: &CStr) -> Option<Vec<u8>> {
+	let manager = ASSET_MANAGER.get().expect("Asset Manager should be initialised before loading assets");
 
-// pub(crate) unsafe fn load_asset(filepath: *const ::std::os::raw::c_char, out: *mut AndroidAsset) {
-// 	let env = attach_jni_env();
-
-// 	let get_method_id = (**env).GetMethodID.unwrap();
-// 	let get_object_class = (**env).GetObjectClass.unwrap();
-// 	let call_object_method = (**env).CallObjectMethod.unwrap();
-
-// 	let mid = (get_method_id)(env, get_object_class(env, ACTIVITY), b"getAssets\0".as_ptr() as _, b"()Landroid/content/res/AssetManager;\0".as_ptr() as _);
-// 	let asset_manager = (call_object_method)(env, ACTIVITY, mid);
-// 	let mgr = AAssetManager_fromJava(env, asset_manager);
-// 	let asset = ndk_sys::AAssetManager_open(mgr, filepath, ndk_sys::AASSET_MODE_BUFFER as _);
-// 	if asset.is_null() {
-// 		return;
-// 	}
-// 	let length = ndk_sys::AAsset_getLength64(asset);
-// 	// TODO: memory leak right here! this buffer would never freed
-// 	let buffer = libc::malloc(length as _);
-// 	if ndk_sys::AAsset_read(asset, buffer, length as _) > 0 {
-// 		ndk_sys::AAsset_close(asset);
-
-// 		(*out).content_length = length as _;
-// 		(*out).content = buffer as _;
-// 	}
-// }
+	match manager.open(filepath) {
+		Some(mut asset) => {
+			let mut buff: Vec<u8> = Vec::new();
+			match asset.read_to_end(&mut buff) {
+				Ok(_) => Some(buff),
+				Err(_) => {
+					#[cfg(feature = "log-impl")]
+					unsafe { console_warn("File read operation was interrupted!".as_ptr()) };
+					None
+				}
+			}
+		},
+		None => {
+			#[cfg(feature = "log-impl")]
+			unsafe { console_warn("No asset found!".as_ptr()) };
+			None
+		}
+	}
+}
