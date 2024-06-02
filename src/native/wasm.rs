@@ -193,8 +193,6 @@ fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static
 	if !blocking {
 		event_handler.update();
 		event_handler.draw();
-	} else {
-		return;
 	}
 
 	// in the words of Dj Khaled, another one!
