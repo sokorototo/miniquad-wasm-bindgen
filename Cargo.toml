@@ -22,7 +22,7 @@ glam = { version = "0.27.0", features = ["scalar-math"] }
 
 [[bin]]
 name = "web"
-path = "examples/post_processing.rs"
+path = "examples/offscreen.rs"
 
 [features]
 log-impl = []
