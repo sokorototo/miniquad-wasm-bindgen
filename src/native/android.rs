@@ -214,8 +214,8 @@ impl MainThreadState {
 				self.fullscreen = fullscreen;
 			}
 			Request::ShowKeyboard(show) => {
-				let mut env = vm.attach_current_thread().expect("Failed to attach JavaVM to current thread");
-				let _ = env.call_method(JObject::from_raw(activity as _), "showKeyboard", "(Z)V", &[JValue::Int(show as _)]);
+				// let mut env = vm.attach_current_thread().expect("Failed to attach JavaVM to current thread");
+				// let _ = env.call_method(JObject::from_raw(activity as _), "showKeyboard", "(Z)V", &[JValue::Int(show as _)]);
 			},
 			_ => {}
 		}
