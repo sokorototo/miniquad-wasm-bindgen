@@ -1,26 +1,32 @@
 use std::{ffi::CStr, io::Read, sync::OnceLock};
 
-/// This implementation will be way heavier than the original miniquad solution, since it uses 
+/// This implementation will be way heavier than the original miniquad solution, since it uses
 /// [`android_activity`](https://docs.rs/android-activity/0.6.0/android_activity/index.html).
-/// 
+///
 /// It's unfortunately unavoidable, if `miniquad-wasm-bindgen` wants to be highly portable with well maintained crates.
 /// This though, gives more freedom to the end user.
-/// 
+///
 /// **Important! This implementation uses the android native activity. Changes to make it more customizable can be made in the future.**
-
-
 use crate::{
 	event::{EventHandler, KeyCode, KeyMods, TouchPhase},
 	native::{
-		android::keycodes::translate_keycode_ndk, egl::{self, LibEgl}, NativeDisplayData
+		android::keycodes::translate_keycode_ndk,
+		egl::{self, LibEgl},
+		NativeDisplayData,
 	},
 };
 
 mod keycodes;
 
-use android_activity::{input::{KeyAction, MotionAction}, AndroidApp, InputStatus, MainEvent, PollEvent, WindowManagerFlags};
 use android_activity::input::InputEvent;
-use jni::{objects::{JObject, JValue}, AttachGuard, JavaVM};
+use android_activity::{
+	input::{KeyAction, MotionAction},
+	AndroidApp, InputStatus, MainEvent, PollEvent, WindowManagerFlags,
+};
+use jni::{
+	objects::{JObject, JValue},
+	AttachGuard, JavaVM,
+};
 use libc::c_void;
 pub use ndk;
 use ndk::asset::AssetManager;
@@ -55,7 +61,7 @@ static ASSET_MANAGER: OnceLock<AssetManager> = OnceLock::new();
 /// Initialization method that should be called before [`miniquad::start`](https://docs.rs/miniquad/latest/miniquad/fn.start.html).
 /// Mobile development on rust has evolved, and now windowing crates should require the user provided `android_activity` [`AndroidApp`] handle
 /// to manage said activities.
-/// 
+///
 /// Only use this function from the main thread
 pub fn init_android_activity(app: AndroidApp) {
 	let _ = ANDROID_APP.set(app);
@@ -127,7 +133,7 @@ impl MainThreadState {
 				unsafe {
 					self.update_surface(wnd.ptr().as_ptr());
 				}
-			},
+			}
 			Message::SurfaceDestroyed => unsafe {
 				self.destroy_surface();
 			},
@@ -177,7 +183,6 @@ impl MainThreadState {
 			Message::Pause => self.event_handler.window_minimized_event(),
 			Message::Resume => {
 				if self.fullscreen {
-
 					unsafe {
 						let vm = JavaVM::from_raw(app.vm_as_ptr() as _).expect("Android App's vm pointer should be valid");
 						let mut env = attach_current_thread(&vm);
@@ -216,7 +221,7 @@ impl MainThreadState {
 			Request::ShowKeyboard(show) => {
 				// let mut env = vm.attach_current_thread().expect("Failed to attach JavaVM to current thread");
 				// let _ = env.call_method(JObject::from_raw(activity as _), "showKeyboard", "(Z)V", &[JValue::Int(show as _)]);
-			},
+			}
 			_ => {}
 		}
 	}
@@ -249,13 +254,12 @@ where
 			console_error(msg.as_ptr());
 		}));
 	}
-	
+
 	let app = ANDROID_APP.get().expect("init_android_activity should be run before miniquad::start on android");
 	let _ = ASSET_MANAGER.set(app.asset_manager());
 
 	let mut vm = unsafe { JavaVM::from_raw(app.vm_as_ptr() as _).expect("VM pointer should be valid") };
 	let activity = app.activity_as_ptr();
-
 
 	app.set_window_flags(WindowManagerFlags::FULLSCREEN, WindowManagerFlags::empty());
 	if conf.fullscreen {
@@ -272,17 +276,17 @@ where
 	// it is important to create GL context only after a first SurfaceChanged
 	let (window, screen_width, screen_height) = loop {
 		let mut display_avaiable = false;
-		app.poll_events(Some(std::time::Duration::from_millis(16)), |event| {
-			match event {
-				PollEvent::Main(main_event) => {
-					match main_event {
-						MainEvent::Destroy => { return; },
-						MainEvent::InitWindow { .. } => { display_avaiable = true; }
-						_ => {}
-					}
-				},
+		app.poll_events(Some(std::time::Duration::from_millis(16)), |event| match event {
+			PollEvent::Main(main_event) => match main_event {
+				MainEvent::Destroy => {
+					return;
+				}
+				MainEvent::InitWindow { .. } => {
+					display_avaiable = true;
+				}
 				_ => {}
-			}
+			},
+			_ => {}
 		});
 
 		if display_avaiable {
@@ -293,7 +297,7 @@ where
 		}
 	};
 
-	let (egl_context, egl_config, egl_display) = 
+	let (egl_context, egl_config, egl_display) =
 		crate::native::egl::create_egl_context(&mut libegl, std::ptr::null_mut() /* EGL_DEFAULT_DISPLAY */, conf.platform.framebuffer_alpha, conf.sample_count).expect("Cant create EGL context");
 
 	assert!(!egl_display.is_null());
@@ -345,31 +349,29 @@ where
 		// ! 16 millis here is a magic number that should be changed
 		app.poll_events(Some(std::time::Duration::from_millis(16)), |event| {
 			match event {
-				PollEvent::Main(main_event) => {
-					match main_event {
-						MainEvent::Destroy => { 
-							messages.push(Message::Destroy);
-						},
-						MainEvent::Pause => {
-							messages.push(Message::Pause);
-						},
-						MainEvent::Resume { .. } => {
-							messages.push(Message::Resume);
-						},
-						MainEvent::InitWindow { .. } => {
-							messages.push(Message::SurfaceCreated);
-						},
-						MainEvent::WindowResized { .. } => {
-							messages.push(Message::SurfaceChanged);
-						},
-						MainEvent::TerminateWindow { .. } => {
-							messages.push(Message::SurfaceDestroyed);
-						},
-						MainEvent::InputAvailable => {
-							input_avaiable = true;
-						}
-						_ => {}
+				PollEvent::Main(main_event) => match main_event {
+					MainEvent::Destroy => {
+						messages.push(Message::Destroy);
 					}
+					MainEvent::Pause => {
+						messages.push(Message::Pause);
+					}
+					MainEvent::Resume { .. } => {
+						messages.push(Message::Resume);
+					}
+					MainEvent::InitWindow { .. } => {
+						messages.push(Message::SurfaceCreated);
+					}
+					MainEvent::WindowResized { .. } => {
+						messages.push(Message::SurfaceChanged);
+					}
+					MainEvent::TerminateWindow { .. } => {
+						messages.push(Message::SurfaceDestroyed);
+					}
+					MainEvent::InputAvailable => {
+						input_avaiable = true;
+					}
+					_ => {}
 				},
 				_ => {}
 			};
@@ -385,19 +387,18 @@ where
 								let keycode = key_event.key_code();
 								match key_event.action() {
 									KeyAction::Down => {
-										messages.push(Message::KeyDown { 
-											keycode: translate_keycode_ndk(keycode)
+										messages.push(Message::KeyDown {
+											keycode: translate_keycode_ndk(keycode),
 										});
-									},
+									}
 									KeyAction::Up | KeyAction::Multiple => {
-										messages.push(Message::KeyUp { 
-											keycode: translate_keycode_ndk(keycode)
+										messages.push(Message::KeyUp {
+											keycode: translate_keycode_ndk(keycode),
 										});
-									},
-									_ => ()
+									}
+									_ => (),
 								};
-							
-							},
+							}
 							InputEvent::MotionEvent(motion_event) => {
 								let ind = motion_event.pointer_index();
 								let ptr = motion_event.pointer_at_index(ind);
@@ -407,27 +408,24 @@ where
 									MotionAction::PointerDown => Some(TouchPhase::Started),
 									MotionAction::PointerUp => Some(TouchPhase::Ended),
 									MotionAction::Move => Some(TouchPhase::Ended),
-									_ => None
+									_ => None,
 								};
 								if let Some(phase) = phase {
 									// TODO: Touch event here is bugged, can't grab multiple pointers currently.
 									messages.push(Message::Touch {
-										phase, 
-										touch_id: ptr.pointer_index() as u64, 
-										x: ptr.x(), 
-										y: ptr.y() 
+										phase,
+										touch_id: ptr.pointer_index() as u64,
+										x: ptr.x(),
+										y: ptr.y(),
 									});
 								}
-							
-							},
-							InputEvent::TextEvent(text) => {
-							
-							},
-							_ => { }
+							}
+							InputEvent::TextEvent(text) => {}
+							_ => {}
 						};
 						InputStatus::Handled
 					});
-					if !read_input { 
+					if !read_input {
 						break;
 					}
 				}
@@ -452,7 +450,6 @@ unsafe fn set_fullscreen(activity: *mut c_void, env: &mut AttachGuard<'_>, fulls
 	let _ = env.call_method(activity, "setFullScreen", "(Z)V", &[JValue::Int(fullscreen as i32)]);
 }
 
-
 // According to documentation, AAssetManager_fromJava is as available as an
 // AAssetManager_open, which was used before
 // For some reason it is missing fron ndk_sys binding
@@ -467,14 +464,18 @@ pub(crate) fn load_asset(filepath: &CStr) -> Option<Vec<u8>> {
 				Ok(_) => Some(buff),
 				Err(_) => {
 					#[cfg(feature = "log-impl")]
-					unsafe { console_warn("File read operation was interrupted!".as_ptr()) };
+					unsafe {
+						console_warn("File read operation was interrupted!".as_ptr())
+					};
 					None
 				}
 			}
-		},
+		}
 		None => {
 			#[cfg(feature = "log-impl")]
-			unsafe { console_warn("No asset found!".as_ptr()) };
+			unsafe {
+				console_warn("No asset found!".as_ptr())
+			};
 			None
 		}
 	}

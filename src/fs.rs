@@ -1,6 +1,6 @@
+use crate::native::android;
 #[cfg(target_os = "ios")]
 use crate::native::ios;
-use crate::native::android;
 
 /// A file-system loading error.
 ///
@@ -57,7 +57,7 @@ fn load_file_android<F: FnOnce(Response)>(path: &str, on_loaded: F) {
 		let filename = std::ffi::CString::new(path).unwrap();
 		match unsafe { android::load_asset(&filename) } {
 			Some(data) => Ok(data),
-			None => Err(Error::AndroidAssetLoadingError)
+			None => Err(Error::AndroidAssetLoadingError),
 		}
 	}
 
