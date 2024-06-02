@@ -17,9 +17,12 @@ exclude = ["examples/"]
 keywords = ["graphics", "3D", "opengl", "gamedev", "windowing"]
 categories = ["rendering::graphics-api"]
 
+[dependencies]
+glam = { version = "0.27.0", features = ["scalar-math"] }
+
 [[bin]]
 name = "web"
-path = "examples/mandelbrot.rs"
+path = "examples/offscreen.rs"
 
 [features]
 log-impl = []

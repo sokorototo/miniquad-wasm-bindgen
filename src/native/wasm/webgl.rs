@@ -689,7 +689,6 @@ pub unsafe fn glGetUniformLocation(program: GLuint, name: *const GLchar) -> GLin
 	-1 // Unable to find uniform
 }
 
-// TODO: Verify uniform code
 pub unsafe fn glUniform1i(location: GLint, v0: GLint) {
 	debug_assert!(UNIFORMS.contains_key(&(location as u32)));
 	get_gl().uniform1i(UNIFORMS.get(&(location as u32)), v0)
@@ -977,10 +976,12 @@ pub fn glCopyTexSubImage2D(target: GLenum, level: GLint, x_offset: GLint, y_offs
 }
 
 pub unsafe fn glCompressedTexImage2D(target: GLenum, level: GLint, internalformat: GLenum, width: GLsizei, height: GLsizei, border: GLint, imageSize: GLsizei, data: *const ::std::os::raw::c_void) {
-	let length = imageSize as usize;
-	let data = std::slice::from_raw_parts(data as *const u8, length);
-
-	get_gl().compressed_tex_image_2d_with_u8_array(target, level, internalformat, width, height, border, data);
+	match data.as_ref().map(|_| std::slice::from_raw_parts(data as *const u8, imageSize as usize)) {
+		Some(data) => get_gl().compressed_tex_image_2d_with_u8_array(target, level, internalformat, width, height, border, data),
+		None => {
+			get_gl().compressed_tex_image_2d_with_i32_and_i32(target, level, internalformat, width, height, border, imageSize, 0);
+		}
+	};
 }
 
 pub unsafe fn glCompressedTexSubImage2D(target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, imageSize: GLsizei, data: *const ::std::os::raw::c_void) {
@@ -1162,8 +1163,12 @@ pub unsafe fn glGenBuffers(n: GLsizei, buffers: *mut GLuint) {
 
 #[inline(always)]
 pub unsafe fn glBufferData(target: GLenum, size: GLsizeiptr, data: *const ::std::os::raw::c_void, usage: GLenum) {
-	let data = slice::from_raw_parts(data as *const u8, size as usize);
-	get_gl().buffer_data_with_u8_array(target, data, usage);
+	if data.is_null() {
+		get_gl().buffer_data_with_i32(target, size, usage);
+	} else {
+		let data = slice::from_raw_parts(data as *const u8, size as usize);
+		get_gl().buffer_data_with_u8_array(target, data, usage);
+	}
 }
 
 pub unsafe fn glBufferSubData(target: GLenum, offset: GLintptr, size: GLsizeiptr, data: *const ::std::os::raw::c_void) {

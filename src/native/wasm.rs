@@ -104,7 +104,7 @@ where
 	event_loop(main_canvas, "default", rx, conf.platform.blocking_event_loop);
 }
 
-fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static str, rx: Receiver<Request>, block: bool) {
+fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static str, rx: Receiver<Request>, blocking: bool) {
 	let event_handler = get_event_handler(None);
 	let mut next_cursor_css = last_cursor_css;
 
@@ -181,7 +181,7 @@ fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static
 					d.screen_position = (new_x as _, new_y as _);
 				}
 			}
-			Request::ScheduleUpdate if block => {
+			Request::ScheduleUpdate if blocking => {
 				event_handler.update();
 				event_handler.draw();
 			}
@@ -190,13 +190,13 @@ fn event_loop(main_canvas: web_sys::HtmlCanvasElement, last_cursor_css: &'static
 	}
 
 	// drive event handler implementation
-	if !block {
+	if !blocking {
 		event_handler.update();
 		event_handler.draw();
 	}
 
 	// in the words of Dj Khaled, another one!
-	let closure = Box::new(move || event_loop(main_canvas, next_cursor_css, rx, true));
+	let closure = Box::new(move || event_loop(main_canvas, next_cursor_css, rx, blocking));
 	let closure = Closure::once_into_js(closure);
 
 	if let Some(w) = web_sys::window() {

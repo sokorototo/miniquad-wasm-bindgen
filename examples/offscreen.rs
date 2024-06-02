@@ -153,6 +153,8 @@ impl EventHandler for Stage {
 	fn update(&mut self) {}
 
 	fn draw(&mut self) {
+		let cxt = self.ctx.as_mut();
+
 		let (width, height) = {
 			let (w, h) = window::screen_size();
 			(w as f32, h as f32)
@@ -168,23 +170,23 @@ impl EventHandler for Stage {
 		let vs_params = display_shader::Uniforms { mvp: view_proj * model };
 
 		// the offscreen pass, rendering a rotating, untextured cube into a render target image
-		self.ctx.begin_pass(Some(self.offscreen_pass), PassAction::clear_color(1.0, 1.0, 1.0, 1.0));
-		self.ctx.apply_pipeline(&self.offscreen_pipeline);
-		self.ctx.apply_bindings(&self.offscreen_bind);
-		self.ctx.apply_uniforms(UniformsSource::table(&vs_params));
-		self.ctx.draw(0, 36, 1);
-		self.ctx.end_render_pass();
+		cxt.begin_pass(Some(self.offscreen_pass), PassAction::clear_color(1.0, 1.0, 1.0, 1.0));
+		cxt.apply_pipeline(&self.offscreen_pipeline);
+		cxt.apply_bindings(&self.offscreen_bind);
+		cxt.apply_uniforms(UniformsSource::table(&vs_params));
+		cxt.draw(0, 36, 1);
+		cxt.end_render_pass();
 
 		// and the display-pass, rendering a rotating, textured cube, using the
 		// previously rendered offscreen render-target as texture
-		self.ctx.begin_default_pass(PassAction::clear_color(0.0, 0., 0.45, 1.));
-		self.ctx.apply_pipeline(&self.display_pipeline);
-		self.ctx.apply_bindings(&self.display_bind);
-		self.ctx.apply_uniforms(UniformsSource::table(&vs_params));
-		self.ctx.draw(0, 36, 1);
-		self.ctx.end_render_pass();
+		cxt.begin_default_pass(PassAction::clear_color(0.0, 0., 0.45, 1.));
+		cxt.apply_pipeline(&self.display_pipeline);
+		cxt.apply_bindings(&self.display_bind);
+		cxt.apply_uniforms(UniformsSource::table(&vs_params));
+		cxt.draw(0, 36, 1);
+		cxt.end_render_pass();
 
-		self.ctx.commit_frame();
+		cxt.commit_frame();
 	}
 }
 
