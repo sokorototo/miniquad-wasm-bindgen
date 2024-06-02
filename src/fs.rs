@@ -1,3 +1,4 @@
+#[cfg(target_os = "android")]
 use crate::native::android;
 #[cfg(target_os = "ios")]
 use crate::native::ios;
@@ -55,7 +56,7 @@ pub fn load_file<F: FnOnce(Response) + 'static>(path: &str, on_loaded: F) {
 fn load_file_android<F: FnOnce(Response)>(path: &str, on_loaded: F) {
 	fn load_file_sync(path: &str) -> Response {
 		let filename = std::ffi::CString::new(path).unwrap();
-		match unsafe { android::load_asset(&filename) } {
+		match android::load_asset(&filename) {
 			Some(data) => Ok(data),
 			None => Err(Error::AndroidAssetLoadingError),
 		}

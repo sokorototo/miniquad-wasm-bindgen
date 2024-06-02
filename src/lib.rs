@@ -6,6 +6,7 @@ pub mod fs;
 pub mod graphics;
 mod native;
 // Just for tests
+#[cfg(target_os = "android")]
 pub use native::android::init_android_activity;
 
 use std::collections::HashMap;
