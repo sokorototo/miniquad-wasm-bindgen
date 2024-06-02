@@ -1008,6 +1008,7 @@ impl RenderingBackend for GlContext {
 			BufferSource::Slice(data) => (data.size, data.element_size),
 			BufferSource::Empty { size, element_size } => (*size, *element_size),
 		};
+
 		let index_type = match type_ {
 			BufferType::IndexBuffer if element_size == 1 || element_size == 2 || element_size == 4 => Some(element_size as u32),
 			BufferType::IndexBuffer => panic!("unsupported index buffer dimension"),
@@ -1025,6 +1026,7 @@ impl RenderingBackend for GlContext {
 				debug_assert!(data.is_slice);
 				glBufferSubData(gl_target, 0, size as _, data.ptr as _);
 			}
+
 			self.cache.restore_buffer_binding(gl_target);
 		}
 

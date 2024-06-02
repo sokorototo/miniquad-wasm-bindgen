@@ -24,6 +24,7 @@ impl Stage {
 			format: TextureFormat::RGBA8,
 			..Default::default()
 		});
+
 		let depth_img = ctx.new_render_texture(TextureParams {
 			width: w as _,
 			height: h as _,
@@ -148,7 +149,6 @@ impl Stage {
 				..Default::default()
 			},
 		);
-
 		Stage {
 			post_processing_pipeline,
 			post_processing_bind,
@@ -203,6 +203,7 @@ impl EventHandler for Stage {
 			let (w, h) = window::screen_size();
 			(w as f32, h as f32)
 		};
+
 		// the offscreen pass, rendering an rotating, untextured cube into a render target image
 		self.ctx.begin_pass(Some(self.offscreen_pass), PassAction::clear_color(1.0, 1.0, 1.0, 1.0));
 		self.ctx.apply_pipeline(&self.offscreen_pipeline);
