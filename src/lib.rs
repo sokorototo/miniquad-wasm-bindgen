@@ -5,6 +5,10 @@ mod event;
 pub mod fs;
 pub mod graphics;
 mod native;
+// Just for tests
+#[cfg(target_os = "android")]
+pub use native::android::init_android_activity;
+
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
@@ -278,6 +282,9 @@ pub enum CursorIcon {
 }
 
 /// Start miniquad_wasm_bindgen.
+///
+/// *Note: on android this function should take the [`AndroidApp`](https://docs.rs/android-activity/latest/android_activity/struct.AndroidApp.html)
+/// handle*
 pub fn start<F>(conf: conf::Conf, f: F)
 where
 	F: 'static + FnOnce() -> Box<dyn EventHandler>,
