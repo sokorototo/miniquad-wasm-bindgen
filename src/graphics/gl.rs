@@ -882,16 +882,19 @@ impl RenderingBackend for GlContext {
 			offset: i64,
 		}
 
-		let mut buffer_cache = unsafe {
-			let mut b = Vec::with_capacity(buffer_layout.len());
-			b.set_len(buffer_layout.len());
-			b.fill(BufferCacheData::default());
-			b
-		};
+        let mut buffer_cache: Vec<BufferCacheData> =
+            vec![BufferCacheData::default(); buffer_layout.len()];
 
-		for VertexAttribute { format, buffer_index, .. } in attributes {
-			let layout = buffer_layout.get(*buffer_index).unwrap();
-			let cache = buffer_cache.get_mut(*buffer_index).unwrap();
+        for VertexAttribute {
+            format,
+            buffer_index,
+            ..
+        } in attributes
+        {
+            let layout = buffer_layout.get(*buffer_index).unwrap_or_else(|| panic!());
+            let cache = buffer_cache
+                .get_mut(*buffer_index)
+                .unwrap_or_else(|| panic!());
 
 			if layout.stride == 0 {
 				cache.stride += format.size_bytes();

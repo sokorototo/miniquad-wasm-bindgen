@@ -82,11 +82,13 @@ use std::sync::{Mutex, OnceLock};
 static NATIVE_DISPLAY: OnceLock<Mutex<native::NativeDisplayData>> = OnceLock::new();
 
 fn set_display(display: native::NativeDisplayData) {
-	let _ = NATIVE_DISPLAY.set(Mutex::new(display));
+	if let Err(_) = NATIVE_DISPLAY.set(Mutex::new(display)) {
+		panic!("UNable to initialize NATIVE_DISPLAY");
+	};
 }
 
 fn native_display() -> &'static Mutex<native::NativeDisplayData> {
-	NATIVE_DISPLAY.get().expect("Backend has not initialized NATIVE_DISPLAY yet.") //|| Mutex::new(Default::default()))
+	NATIVE_DISPLAY.get().expect("Backend has not initialized NATIVE_DISPLAY yet.")
 }
 
 /// Window and associated to window rendering context related functions.

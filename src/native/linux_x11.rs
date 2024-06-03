@@ -140,9 +140,9 @@ impl X11Display {
 			_ => {}
 		};
 
-		let d = crate::native_display().try_lock().unwrap();
 		if event_handler.quit_requested_event() {
-			drop(d);
+			let mut d = crate::native_display().try_lock().unwrap();
+			d.quit = true;
 		}
 	}
 
@@ -274,11 +274,8 @@ impl X11Display {
 				ShowMouse(show) => self.show_mouse(show),
 				SetMouseCursor(icon) => self.set_cursor(self.window, Some(icon)),
 				SetWindowSize { new_width, new_height } => self.set_window_size(self.window, new_width as _, new_height as _),
-				SetWindowPosition { new_x: _, new_y: _ } => {
-					eprintln!("Not implemented for X11")
-				}
 				SetFullscreen(fullscreen) => self.set_fullscreen(self.window, fullscreen),
-				ShowKeyboard(_) => {
+				_ => {
 					#[cfg(feature = "log-impl")]
 					crate::error!("Not implemented for X11")
 				}
