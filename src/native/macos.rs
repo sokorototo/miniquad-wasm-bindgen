@@ -29,11 +29,11 @@ pub struct MacosDisplay {
 	cursors: HashMap<CursorIcon, ObjcId>,
 	gfx_api: crate::conf::AppleGfxApi,
 
-    event_handler: Option<Box<dyn EventHandler>>,
-    f: Option<Box<dyn 'static + FnOnce() -> Box<dyn EventHandler>>>,
-    modifiers: Modifiers,
-    native_requests: Receiver<Request>,
-    update_requested: bool,
+	event_handler: Option<Box<dyn EventHandler>>,
+	f: Option<Box<dyn 'static + FnOnce() -> Box<dyn EventHandler>>>,
+	modifiers: Modifiers,
+	native_requests: Receiver<Request>,
+	update_requested: bool,
 }
 
 impl MacosDisplay {
@@ -175,9 +175,9 @@ impl MacosDisplay {
 		use Request::*;
 		unsafe {
 			match request {
-                ScheduleUpdate => {
-                    self.update_requested = true;
-                }
+				ScheduleUpdate => {
+					self.update_requested = true;
+				}
 				SetCursorGrab(grab) => self.set_cursor_grab(self.window, grab),
 				ShowMouse(show) => self.show_mouse(show),
 				SetMouseCursor(icon) => self.set_mouse_cursor(icon),
@@ -521,18 +521,18 @@ pub fn define_opengl_view_class() -> *const Class {
 		}
 	}
 
-    extern "C" fn draw_rect(this: &Object, _sel: Sel, _rect: NSRect) {
-        let payload = get_window_payload(this);
-        let mut updated = false;
+	extern "C" fn draw_rect(this: &Object, _sel: Sel, _rect: NSRect) {
+		let payload = get_window_payload(this);
+		let mut updated = false;
 
-        if let Some(event_handler) = payload.context() {
-            event_handler.update();
-            event_handler.draw();
-            updated = true;
-        }
-        if updated {
-            payload.update_requested = false;
-        }
+		if let Some(event_handler) = payload.context() {
+			event_handler.update();
+			event_handler.draw();
+			updated = true;
+		}
+		if updated {
+			payload.update_requested = false;
+		}
 
 		unsafe {
 			let ctx: ObjcId = msg_send![this, openGLContext];
@@ -570,19 +570,13 @@ pub fn define_opengl_view_class() -> *const Class {
 		payload.event_handler = Some(f());
 	}
 
-    let superclass = class!(NSOpenGLView);
-    let mut decl: ClassDecl = ClassDecl::new("RenderViewClass", superclass).unwrap();
-    unsafe {
-        //decl.add_method(sel!(dealloc), dealloc as extern "C" fn(&Object, Sel));
-        decl.add_method(
-            sel!(prepareOpenGL),
-            prepare_open_gl as extern "C" fn(&Object, Sel),
-        );
-        decl.add_method(sel!(reshape), reshape as extern "C" fn(&Object, Sel));
-        decl.add_method(
-            sel!(drawRect:),
-            draw_rect as extern "C" fn(&Object, Sel, NSRect),
-        );
+	let superclass = class!(NSOpenGLView);
+	let mut decl: ClassDecl = ClassDecl::new("RenderViewClass", superclass).unwrap();
+	unsafe {
+		//decl.add_method(sel!(dealloc), dealloc as extern "C" fn(&Object, Sel));
+		decl.add_method(sel!(prepareOpenGL), prepare_open_gl as extern "C" fn(&Object, Sel));
+		decl.add_method(sel!(reshape), reshape as extern "C" fn(&Object, Sel));
+		decl.add_method(sel!(drawRect:), draw_rect as extern "C" fn(&Object, Sel, NSRect));
 
 		view_base_decl(&mut decl);
 	}
@@ -593,9 +587,9 @@ pub fn define_opengl_view_class() -> *const Class {
 }
 
 pub fn define_metal_view_class() -> *const Class {
-    let superclass = class!(MTKView);
-    let mut decl = ClassDecl::new("RenderViewClass", superclass).unwrap();
-    decl.add_ivar::<*mut c_void>("display_ptr");
+	let superclass = class!(MTKView);
+	let mut decl = ClassDecl::new("RenderViewClass", superclass).unwrap();
+	decl.add_ivar::<*mut c_void>("display_ptr");
 
 	extern "C" fn draw_rect(this: &Object, _sel: Sel, _rect: NSRect) {
 		let payload = get_window_payload(this);
@@ -605,16 +599,16 @@ pub fn define_metal_view_class() -> *const Class {
 			payload.event_handler = Some(f());
 		}
 
-       let mut updated = false;
+		let mut updated = false;
 
-        if let Some(event_handler) = payload.context() {
-            event_handler.update();
-            event_handler.draw();
-            updated = true;
-        }
-        if updated {
-            payload.update_requested = false;
-        }
+		if let Some(event_handler) = payload.context() {
+			event_handler.update();
+			event_handler.draw();
+			updated = true;
+		}
+		if updated {
+			payload.update_requested = false;
+		}
 
 		unsafe {
 			let d = native_display().lock().unwrap();
@@ -625,12 +619,9 @@ pub fn define_metal_view_class() -> *const Class {
 		}
 	}
 
-    unsafe {
-        //decl.add_method(sel!(dealloc), dealloc as extern "C" fn(&Object, Sel));
-        decl.add_method(
-            sel!(drawRect:),
-            draw_rect as extern "C" fn(&Object, Sel, NSRect),
-        );
+	unsafe {
+		//decl.add_method(sel!(dealloc), dealloc as extern "C" fn(&Object, Sel));
+		decl.add_method(sel!(drawRect:), draw_rect as extern "C" fn(&Object, Sel, NSRect));
 
 		view_base_decl(&mut decl);
 	}
@@ -651,15 +642,15 @@ unsafe fn create_metal_view(_: NSRect, sample_count: i32, _: bool) -> ObjcId {
 	let view: ObjcId = msg_send![view_class, alloc];
 	let view: ObjcId = msg_send![view, init];
 
-    let () = msg_send![view, setDevice: mtl_device_obj];
-    let () = msg_send![view, setColorPixelFormat: MTLPixelFormat::BGRA8Unorm];
-    let () = msg_send![
-        view,
-        setDepthStencilPixelFormat: MTLPixelFormat::Depth32Float_Stencil8
-    ];
-    let () = msg_send![view, setSampleCount: sample_count];
-    let () = msg_send![view, setEnableSetNeedsDisplay: true];
-    let () = msg_send![view, setPaused: true];
+	let () = msg_send![view, setDevice: mtl_device_obj];
+	let () = msg_send![view, setColorPixelFormat: MTLPixelFormat::BGRA8Unorm];
+	let () = msg_send![
+		view,
+		setDepthStencilPixelFormat: MTLPixelFormat::Depth32Float_Stencil8
+	];
+	let () = msg_send![view, setSampleCount: sample_count];
+	let () = msg_send![view, setEnableSetNeedsDisplay: true];
+	let () = msg_send![view, setPaused: true];
 
 	view
 }
@@ -771,30 +762,30 @@ pub unsafe fn run<F>(conf: crate::conf::Conf, f: F)
 where
 	F: 'static + FnOnce() -> Box<dyn EventHandler>,
 {
-    let (tx, rx) = std::sync::mpsc::channel();
-    let clipboard = Box::new(MacosClipboard);
-    crate::set_display(NativeDisplayData {
-        high_dpi: conf.high_dpi,
-        gfx_api: conf.platform.apple_gfx_api,
-        blocking_event_loop: conf.platform.blocking_event_loop,
-        ..NativeDisplayData::new(conf.window_width, conf.window_height, tx, clipboard)
-    });
+	let (tx, rx) = std::sync::mpsc::channel();
+	let clipboard = Box::new(MacosClipboard);
+	crate::set_display(NativeDisplayData {
+		high_dpi: conf.high_dpi,
+		gfx_api: conf.platform.apple_gfx_api,
+		blocking_event_loop: conf.platform.blocking_event_loop,
+		..NativeDisplayData::new(conf.window_width, conf.window_height, tx, clipboard)
+	});
 
-    let mut display = MacosDisplay {
-        view: std::ptr::null_mut(),
-        window: std::ptr::null_mut(),
-        fullscreen: false,
-        cursor_shown: true,
-        current_cursor: CursorIcon::Default,
-        cursor_grabbed: false,
-        cursors: HashMap::new(),
-        gfx_api: conf.platform.apple_gfx_api,
-        f: Some(Box::new(f)),
-        event_handler: None,
-        native_requests: rx,
-        modifiers: Modifiers::default(),
-        update_requested: true,
-    };
+	let mut display = MacosDisplay {
+		view: std::ptr::null_mut(),
+		window: std::ptr::null_mut(),
+		fullscreen: false,
+		cursor_shown: true,
+		current_cursor: CursorIcon::Default,
+		cursor_grabbed: false,
+		cursors: HashMap::new(),
+		gfx_api: conf.platform.apple_gfx_api,
+		f: Some(Box::new(f)),
+		event_handler: None,
+		native_requests: rx,
+		modifiers: Modifiers::default(),
+		update_requested: true,
+	};
 
 	let app_delegate_class = define_app_delegate();
 	let app_delegate_instance: ObjcId = msg_send![app_delegate_class, new];
@@ -863,7 +854,7 @@ where
 
 	let _ = display.update_dimensions();
 
-    assert!(!view.is_null());
+	assert!(!view.is_null());
 
 	let () = msg_send![window, makeFirstResponder: view];
 
@@ -875,43 +866,43 @@ where
 
 	let ns_app: ObjcId = msg_send![class!(NSApplication), sharedApplication];
 
-    // Basically reimplementing msg_send![ns_app, run] here
-    let () = msg_send![ns_app, finishLaunching];
+	// Basically reimplementing msg_send![ns_app, run] here
+	let () = msg_send![ns_app, finishLaunching];
 
-    let distant_future: ObjcId = msg_send![class!(NSDate), distantFuture];
-    let distant_past: ObjcId = msg_send![class!(NSDate), distantPast];
-    let mut done = false;
-    while !(done || crate::native_display().lock().unwrap().quit_ordered) {
-        while let Ok(request) = display.native_requests.try_recv() {
-            display.process_request(request);
-        }
+	let distant_future: ObjcId = msg_send![class!(NSDate), distantFuture];
+	let distant_past: ObjcId = msg_send![class!(NSDate), distantPast];
+	let mut done = false;
+	while !(done || crate::native_display().lock().unwrap().quit_ordered) {
+		while let Ok(request) = display.native_requests.try_recv() {
+			display.process_request(request);
+		}
 
-        unsafe {
-            let d = native_display().lock().unwrap();
-            if d.quit_requested || d.quit_ordered {
-                done = true;
-            }
-        }
+		unsafe {
+			let d = native_display().lock().unwrap();
+			if d.quit_requested || d.quit_ordered {
+				done = true;
+			}
+		}
 
-        let block_on_wait = conf.platform.blocking_event_loop && !display.update_requested;
-        if block_on_wait {
-            let event: ObjcId = msg_send![ns_app, nextEventMatchingMask: NSEventMask::NSAnyEventMask untilDate: distant_future inMode:NSDefaultRunLoopMode dequeue:YES];
+		let block_on_wait = conf.platform.blocking_event_loop && !display.update_requested;
+		if block_on_wait {
+			let event: ObjcId = msg_send![ns_app, nextEventMatchingMask: NSEventMask::NSAnyEventMask untilDate: distant_future inMode:NSDefaultRunLoopMode dequeue:YES];
 
-            let () = msg_send![ns_app, sendEvent:event];
-        } else {
-            loop {
-                let event: ObjcId = msg_send![ns_app, nextEventMatchingMask: NSEventMask::NSAnyEventMask untilDate: distant_past inMode:NSDefaultRunLoopMode dequeue:YES];
-                if event == nil {
-                    break;
-                }
-                let () = msg_send![ns_app, sendEvent:event];
-            }
-        }
+			let () = msg_send![ns_app, sendEvent:event];
+		} else {
+			loop {
+				let event: ObjcId = msg_send![ns_app, nextEventMatchingMask: NSEventMask::NSAnyEventMask untilDate: distant_past inMode:NSDefaultRunLoopMode dequeue:YES];
+				if event == nil {
+					break;
+				}
+				let () = msg_send![ns_app, sendEvent:event];
+			}
+		}
 
-        if !conf.platform.blocking_event_loop || display.update_requested {
-            unsafe {
-                let () = msg_send!(view, setNeedsDisplay: YES);
-            }
-        }
-    }
+		if !conf.platform.blocking_event_loop || display.update_requested {
+			unsafe {
+				let () = msg_send!(view, setNeedsDisplay: YES);
+			}
+		}
+	}
 }
