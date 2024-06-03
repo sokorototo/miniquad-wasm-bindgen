@@ -402,6 +402,11 @@ impl TextureId {
 	}
 }
 
+// ? Why? Because RawId is already unsafely Sync Send. Plus, it's just an ID, with no data behind, 
+// ? it's supposed to be easily clonnable and passed between threads.
+unsafe impl Sync for TextureId {}
+unsafe impl Send for TextureId {}
+
 /// Pixel arithmetic description for blending operations.
 /// Will be used in an equation:
 /// `equation(sfactor * source_color, dfactor * destination_color)`
