@@ -139,11 +139,6 @@ impl X11Display {
 			}
 			_ => {}
 		};
-
-		if event_handler.quit_requested_event() {
-			let mut d = crate::native_display().try_lock().unwrap();
-			d.quit = true;
-		}
 	}
 
 	// TODO: right now it just exits early if fullscreen is false.
@@ -417,6 +412,7 @@ where
 			// same thing as in glx loop, explained there
 			count = count + 1;
 		}
+
 		for _ in 0..count {
 			let mut xevent = _XEvent { type_0: 0 };
 			(display.libx11.XNextEvent)(display.display, &mut xevent);
