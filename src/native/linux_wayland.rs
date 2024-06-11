@@ -1,4 +1,4 @@
-#![allow(non_camel_case_types)]
+#![allow(dead_code, static_mut_refs)]
 
 mod libwayland_client;
 mod libwayland_egl;
