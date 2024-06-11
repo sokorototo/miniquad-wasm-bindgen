@@ -28,7 +28,6 @@ use jni::{
 	AttachGuard, JavaVM,
 };
 use libc::c_void;
-pub use ndk;
 use ndk::asset::AssetManager;
 
 /// Short recap on how miniquad_wasm_bindgen on Android works
