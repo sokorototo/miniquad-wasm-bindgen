@@ -28,7 +28,6 @@ use jni::{
 	AttachGuard, JavaVM,
 };
 use libc::c_void;
-pub use ndk;
 use ndk::asset::AssetManager;
 
 /// Short recap on how miniquad_wasm_bindgen on Android works
@@ -404,10 +403,10 @@ where
 								let ptr = motion_event.pointer_at_index(ind);
 								// TODO: It seems like MotionEvent can also come from java action UI interactions. Im ignoring them here
 								let phase = match motion_event.action() {
-									MotionAction::Cancel => Some(TouchPhase::Cancelled),
-									MotionAction::PointerDown => Some(TouchPhase::Started),
-									MotionAction::PointerUp => Some(TouchPhase::Ended),
-									MotionAction::Move => Some(TouchPhase::Ended),
+									MotionAction::Cancel | MotionAction::Outside => Some(TouchPhase::Cancelled),
+									MotionAction::PointerDown | MotionAction::Down => Some(TouchPhase::Started),
+									MotionAction::PointerUp | MotionAction::Up => Some(TouchPhase::Ended),
+									MotionAction::Move | MotionAction::Scroll => Some(TouchPhase::Moved),
 									_ => None,
 								};
 								if let Some(phase) = phase {
@@ -419,8 +418,8 @@ where
 										y: ptr.y(),
 									});
 								}
-							}
-							InputEvent::TextEvent(text) => {}
+							},
+							InputEvent::TextEvent(text) => {},
 							_ => {}
 						};
 						InputStatus::Handled
