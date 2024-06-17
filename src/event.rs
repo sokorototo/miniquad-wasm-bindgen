@@ -177,9 +177,10 @@ pub trait EventHandler {
 
 	fn char_event(&mut self, _character: char, _keymods: KeyMods, _repeat: bool) {}
 
-	fn key_down_event(&mut self, _keycode: KeyCode, _keymods: KeyMods, _repeat: bool) {}
+    fn key_down_event(&mut self, _keycode: KeyCode, _keymods: KeyMods, _repeat: bool) {}
 
-	fn key_up_event(&mut self, _keycode: KeyCode, _keymods: KeyMods) {}
+
+    fn key_up_event(&mut self, _keycode: KeyCode, _keymods: KeyMods) {}
 
 	/// Default implementation emulates mouse clicks
 	fn touch_event(&mut self, phase: TouchPhase, _id: u64, x: f32, y: f32) {
