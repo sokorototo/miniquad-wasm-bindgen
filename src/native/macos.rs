@@ -134,7 +134,7 @@ impl MacosDisplay {
 		(new_x, new_y)
 	}
 
-	fn move_mouse_inside_window(&self, window: *mut Object) {
+	fn move_mouse_inside_window(&self, _window: *mut Object) {
 		unsafe {
 			let frame: NSRect = msg_send![self.window, frame];
 			let origin = self.transform_mouse_point(&frame.origin);
@@ -152,7 +152,10 @@ impl MacosDisplay {
 			let dpi_scale: f64 = msg_send![self.window, backingScaleFactor];
 			d.dpi_scale = dpi_scale as f32;
 		} else {
-			d.dpi_scale = 1.0;
+            let bounds: NSRect = msg_send![self.view, bounds];
+            let backing_size: NSSize = msg_send![self.view, convertSizeToBacking: NSSize {width: bounds.size.width, height: bounds.size.height}];
+
+			d.dpi_scale = (backing_size.width / bounds.size.width) as f32;
 		}
 
 		let bounds: NSRect = msg_send![self.view, bounds];
@@ -171,25 +174,26 @@ impl MacosDisplay {
 		}
 	}
 
-	fn process_request(&mut self, request: Request) {
-		use Request::*;
-		unsafe {
-			match request {
-				ScheduleUpdate => {
-					self.update_requested = true;
-				}
-				SetCursorGrab(grab) => self.set_cursor_grab(self.window, grab),
-				ShowMouse(show) => self.show_mouse(show),
-				SetMouseCursor(icon) => self.set_mouse_cursor(icon),
-				SetWindowSize { new_width, new_height } => self.set_window_size(new_width as _, new_height as _),
-				SetFullscreen(fullscreen) => self.set_fullscreen(fullscreen),
-				SetWindowPosition { new_x, new_y } => {
-					eprintln!("Not implemented for macos");
-				}
-				_ => {}
-			}
-		}
-	}
+    fn process_request(&mut self, request: Request) {
+        use Request::*;
+        match request {
+            ScheduleUpdate => {
+                self.update_requested = true;
+            }
+            SetCursorGrab(grab) => self.set_cursor_grab(self.window, grab),
+            ShowMouse(show) => self.show_mouse(show),
+            SetMouseCursor(icon) => self.set_mouse_cursor(icon),
+            SetWindowSize {
+                new_width,
+                new_height,
+            } => self.set_window_size(new_width as _, new_height as _),
+            SetFullscreen(fullscreen) => self.set_fullscreen(fullscreen),
+            SetWindowPosition { .. } => {
+                eprintln!("Not implemented for macos");
+            }
+            _ => {}
+        }
+    }
 }
 
 #[derive(Default)]
@@ -599,7 +603,7 @@ pub fn define_metal_view_class() -> *const Class {
 			payload.event_handler = Some(f());
 		}
 
-		let mut updated = false;
+ 		let mut updated = false;
 
 		if let Some(event_handler) = payload.context() {
 			event_handler.update();
@@ -713,8 +717,8 @@ impl crate::native::Clipboard for MacosClipboard {
 	fn set(&mut self, _data: &str) {}
 }
 
-unsafe extern "C" fn release_data(info: *mut &[u8], _: *const c_void, _: usize) {
-	Box::from_raw(info);
+unsafe extern "C" fn release_data(info: *mut c_void, _: *const c_void, _: usize) {
+    drop(Box::from_raw(info));
 }
 
 unsafe fn set_icon(ns_app: ObjcId, icon: &Icon) {
@@ -730,7 +734,7 @@ unsafe fn set_icon(ns_app: ObjcId, icon: &Icon) {
 	let size = colors.len();
 	let boxed = Box::new(colors);
 	let info = Box::into_raw(boxed);
-	let provider = CGDataProviderCreateWithData(info, data, size, release_data);
+	let provider = CGDataProviderCreateWithData(info as *mut c_void, data, size, release_data);
 	let image = CGImageCreate(
 		width,
 		height,
@@ -877,7 +881,7 @@ where
 			display.process_request(request);
 		}
 
-		unsafe {
+		{
 			let d = native_display().lock().unwrap();
 			if d.quit_requested || d.quit_ordered {
 				done = true;

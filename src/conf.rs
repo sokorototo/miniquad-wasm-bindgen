@@ -69,6 +69,12 @@ pub enum AppleGfxApi {
 	Metal,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum WebGLVersion {
+    WebGL1,
+    WebGL2,
+}
+
 /// Platform specific settings.
 #[derive(Debug, Clone)]
 pub struct PlatformSettings {

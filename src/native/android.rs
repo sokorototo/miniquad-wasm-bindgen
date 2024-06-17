@@ -97,6 +97,7 @@ struct MainThreadState {
 	event_handler: Box<dyn EventHandler>,
 	quit: bool,
 	fullscreen: bool,
+	update_requested: bool,
 	keymods: KeyMods,
 }
 
@@ -112,7 +113,7 @@ impl MainThreadState {
 			ndk_sys::ANativeWindow_release(self.window);
 		}
 		self.window = window;
-		if self.surface.is_null() == false {
+		if !self.surface.is_null() {
 			self.destroy_surface();
 		}
 
@@ -201,7 +202,8 @@ impl MainThreadState {
 	fn frame(&mut self) {
 		self.event_handler.update();
 
-		if self.surface.is_null() == false {
+		if !self.surface.is_null() {
+			self.update_requested = false;
 			self.event_handler.draw();
 
 			unsafe {
@@ -213,14 +215,17 @@ impl MainThreadState {
 	unsafe fn process_request(&mut self, vm: &mut JavaVM, activity: *mut c_void, request: crate::native::Request) {
 		use crate::native::Request;
 		match request {
+			Request::ScheduleUpdate => {
+				self.update_requested = true;
+			}
 			Request::SetFullscreen(fullscreen) => {
 				let mut env = attach_current_thread(&vm);
 				set_fullscreen(activity, &mut env, fullscreen);
 				self.fullscreen = fullscreen;
 			}
 			Request::ShowKeyboard(show) => {
-				// let mut env = vm.attach_current_thread().expect("Failed to attach JavaVM to current thread");
-				// let _ = env.call_method(JObject::from_raw(activity as _), "showKeyboard", "(Z)V", &[JValue::Int(show as _)]);
+				let mut env = attach_current_thread(&vm);
+				show_keyboard(activity, &mut env, show);
 			}
 			_ => {}
 		}
@@ -318,6 +323,7 @@ where
 	let clipboard = Box::new(AndroidClipboard::new());
 	crate::set_display(NativeDisplayData {
 		high_dpi: conf.high_dpi,
+		blocking_event_loop: conf.platform.blocking_event_loop,
 		..NativeDisplayData::new(screen_width as _, screen_height as _, tx, clipboard)
 	});
 
@@ -432,11 +438,21 @@ where
 			}
 		}
 
-		for message in messages.drain(..) {
-			s.process_message(&app, message);
+		if !conf.platform.blocking_event_loop || s.update_requested {
+			// process all messages and update the frame
+			for message in messages.drain(..) {
+				s.process_message(&app, message);
+			}
+
+			s.frame();
+		} else {
+			for message in messages.drain(..1) {
+				s.process_message(&app, message);
+			}
 		}
 
-		s.frame();
+		// yield the thread
+		thread::yield_now();
 	}
 
 	(s.libegl.eglMakeCurrent.unwrap())(s.egl_display, std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut());
@@ -445,9 +461,108 @@ where
 	(s.libegl.eglTerminate.unwrap())(s.egl_display);
 }
 
+#[no_mangle]
+extern "C" fn jni_on_load(vm: *mut std::ffi::c_void) {
+	unsafe {
+		VM = vm as _;
+	}
+}
+
+unsafe fn create_native_window(surface: ndk_sys::jobject) -> *mut ndk_sys::ANativeWindow {
+	let env = attach_jni_env();
+
+	ndk_sys::ANativeWindow_fromSurface(env, surface)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_quad_1native_QuadNative_activityOnCreate(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, activity: ndk_sys::jobject) {
+	let env = attach_jni_env();
+	ACTIVITY = (**env).NewGlobalRef.unwrap()(env, activity);
+	quad_main();
+}
+
+#[no_mangle]
+unsafe extern "C" fn Java_quad_1native_QuadNative_activityOnResume(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject) {
+	send_message(Message::Resume);
+}
+
+#[no_mangle]
+unsafe extern "C" fn Java_quad_1native_QuadNative_activityOnPause(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject) {
+	send_message(Message::Pause);
+}
+
+#[no_mangle]
+unsafe extern "C" fn Java_quad_1native_QuadNative_activityOnDestroy(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject) {
+	send_message(Message::Destroy);
+}
+
+#[no_mangle]
+extern "C" fn Java_quad_1native_QuadNative_surfaceOnSurfaceCreated(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, surface: ndk_sys::jobject) {
+	let window = unsafe { create_native_window(surface) };
+	send_message(Message::SurfaceCreated { window });
+}
+
+#[no_mangle]
+extern "C" fn Java_quad_1native_QuadNative_surfaceOnSurfaceDestroyed(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject) {
+	send_message(Message::SurfaceDestroyed);
+}
+
+#[no_mangle]
+extern "C" fn Java_quad_1native_QuadNative_surfaceOnSurfaceChanged(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, surface: ndk_sys::jobject, width: ndk_sys::jint, height: ndk_sys::jint) {
+	let window = unsafe { create_native_window(surface) };
+
+	send_message(Message::SurfaceChanged {
+		window,
+		width: width as _,
+		height: height as _,
+	});
+}
+
+#[no_mangle]
+extern "C" fn Java_quad_1native_QuadNative_surfaceOnTouch(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, touch_id: ndk_sys::jint, action: ndk_sys::jint, x: ndk_sys::jfloat, y: ndk_sys::jfloat) {
+	let phase = match action {
+		0 => TouchPhase::Moved,
+		1 => TouchPhase::Ended,
+		2 => TouchPhase::Started,
+		3 => TouchPhase::Cancelled,
+		x => panic!("Unsupported touch phase: {}", x),
+	};
+
+	send_message(Message::Touch {
+		phase,
+		touch_id: touch_id as _,
+		x: x as f32,
+		y: y as f32,
+	});
+}
+
+#[no_mangle]
+extern "C" fn Java_quad_1native_QuadNative_surfaceOnKeyDown(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, keycode: ndk_sys::jint) {
+	let keycode = keycodes::translate_keycode(keycode as _);
+
+	send_message(Message::KeyDown { keycode });
+}
+
+#[no_mangle]
+extern "C" fn Java_quad_1native_QuadNative_surfaceOnKeyUp(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, keycode: ndk_sys::jint) {
+	let keycode = keycodes::translate_keycode(keycode as _);
+
+	send_message(Message::KeyUp { keycode });
+}
+
+#[no_mangle]
+extern "C" fn Java_quad_1native_QuadNative_surfaceOnCharacter(_: *mut ndk_sys::JNIEnv, _: ndk_sys::jobject, character: ndk_sys::jint) {
+	send_message(Message::Character { character: character as u32 });
+}
+
 unsafe fn set_fullscreen(activity: *mut c_void, env: &mut AttachGuard<'_>, fullscreen: bool) {
 	let activity = JObject::from_raw(activity as _);
 	let _ = env.call_method(activity, "setFullScreen", "(Z)V", &[JValue::Int(fullscreen as i32)]);
+}
+
+unsafe fn show_keyboard(activity: *mut c_void, env: &mut AttachGuard<'_>, show: bool) {
+	let activity = JObject::from_raw(activity as _);
+	let _ = env.call_method(activity, "showKeyboard", "(Z)V", &[JValue::Int(show as i32)]);
 }
 
 // According to documentation, AAssetManager_fromJava is as available as an

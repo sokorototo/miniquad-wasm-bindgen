@@ -667,11 +667,12 @@ impl RenderingBackend for GlContext {
 		// It was tested on really old windows machines, virtual machines etc. glsl100 always works!
 		glsl_support.v100 = true;
 
-		// on wasm miniquad_wasm_bindgen always creates webgl1 context, with the only glsl available being version 100
+		// on wasm miniquad always creates webgl1 context, with the only glsl available being version 100
 		#[cfg(target_arch = "wasm32")]
 		{
-			// on web, miniquad_wasm_bindgen always loads EXT_shader_texture_lod and OES_standard_derivatives
+			// on web, miniquad always loads EXT_shader_texture_lod and OES_standard_derivatives
 			glsl_support.v100_ext = true;
+			glsl_support.v300es = true;
 		}
 
 		#[cfg(not(target_arch = "wasm32"))]
@@ -710,8 +711,10 @@ impl RenderingBackend for GlContext {
 		self.textures.0.push(texture);
 		TextureId(TextureIdInner::Managed(self.textures.0.len() - 1))
 	}
+
 	fn delete_texture(&mut self, texture: TextureId) {
-		self.cache.clear_texture_bindings();
+		// self.cache.clear_texture_bindings();
+
 		let t = self.textures.get(texture);
 		unsafe {
 			glDeleteTextures(1, &t.raw as *const _);
