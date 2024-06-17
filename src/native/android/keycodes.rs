@@ -1,69 +1,6 @@
 use crate::event::KeyCode as QuadKeyCode;
 use android_activity::input::Keycode;
 
-// pub fn translate_keycode(keycode: u32) -> QuadKeyCode {
-// 	// same as GLFW
-// 	match keycode {
-// 		0x01 => QuadKeyCode::Left,
-// 		0x02 => QuadKeyCode::Right,
-// 		0x03 => QuadKeyCode::Home,
-// 		0x07 => QuadKeyCode::Key0,
-// 		0x08 => QuadKeyCode::Key1,
-// 		0x09 => QuadKeyCode::Key2,
-// 		0x0a => QuadKeyCode::Key3,
-// 		0x0b => QuadKeyCode::Key4,
-// 		0x0c => QuadKeyCode::Key5,
-// 		0x0d => QuadKeyCode::Key6,
-// 		0x0e => QuadKeyCode::Key7,
-// 		0x0f => QuadKeyCode::Key8,
-// 		0x10 => QuadKeyCode::Key9,
-// 		0x13 => QuadKeyCode::Up,
-// 		0x14 => QuadKeyCode::Down,
-// 		0x15 => QuadKeyCode::Left,
-// 		0x16 => QuadKeyCode::Right,
-// 		0x17 => QuadKeyCode::Enter,
-// 		0x1d => QuadKeyCode::A,
-// 		0x1e => QuadKeyCode::B,
-// 		0x1f => QuadKeyCode::C,
-// 		0x20 => QuadKeyCode::D,
-// 		0x21 => QuadKeyCode::E,
-// 		0x22 => QuadKeyCode::F,
-// 		0x23 => QuadKeyCode::G,
-// 		0x24 => QuadKeyCode::H,
-// 		0x25 => QuadKeyCode::I,
-// 		0x26 => QuadKeyCode::J,
-// 		0x27 => QuadKeyCode::K,
-// 		0x28 => QuadKeyCode::L,
-// 		0x29 => QuadKeyCode::M,
-// 		0x2a => QuadKeyCode::N,
-// 		0x2b => QuadKeyCode::O,
-// 		0x2c => QuadKeyCode::P,
-// 		0x2d => QuadKeyCode::Q,
-// 		0x2e => QuadKeyCode::R,
-// 		0x2f => QuadKeyCode::S,
-// 		0x30 => QuadKeyCode::T,
-// 		0x31 => QuadKeyCode::U,
-// 		0x32 => QuadKeyCode::V,
-// 		0x33 => QuadKeyCode::W,
-// 		0x34 => QuadKeyCode::X,
-// 		0x35 => QuadKeyCode::Y,
-// 		0x36 => QuadKeyCode::Z,
-// 		0x37 => QuadKeyCode::Comma,
-// 		0x38 => QuadKeyCode::Period,
-// 		0x39 => QuadKeyCode::LeftAlt,
-// 		0x3a => QuadKeyCode::RightAlt,
-// 		0x3b => QuadKeyCode::LeftShift,
-// 		0x3c => QuadKeyCode::RightShift,
-// 		0x3d => QuadKeyCode::Tab,
-// 		0x3e => QuadKeyCode::Space,
-// 		0x42 => QuadKeyCode::Enter,
-// 		// android calls it Delete, but it has an icon of the Backspace and
-// 		// expected behavior of the Backspace
-// 		0x43 => QuadKeyCode::Backspace,
-// 		_ => QuadKeyCode::Unknown,
-// 	}
-// }
-
 /// Translates `NDK` keycodes to miniquad's
 pub fn translate_keycode_ndk(keycode: Keycode) -> QuadKeyCode {
 	// TODO: I have no idea what key `QuadKeyCode::Left` and others really reference. If it's a bug - open a PR

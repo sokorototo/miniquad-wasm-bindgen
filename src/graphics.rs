@@ -14,7 +14,7 @@ pub use gl::GlContext;
 #[cfg(target_vendor = "apple")]
 pub use metal::MetalContext;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UniformType {
 	/// One 32-bit wide float (equivalent to `f32`)
 	Float1,
@@ -53,14 +53,14 @@ impl UniformType {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct UniformDesc {
 	pub name: String,
 	pub uniform_type: UniformType,
 	pub array_count: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct UniformBlockLayout {
 	pub uniforms: Vec<UniformDesc>,
 }
@@ -79,7 +79,7 @@ impl UniformDesc {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ShaderMeta {
 	pub uniforms: UniformBlockLayout,
 	pub images: Vec<String>,
@@ -401,6 +401,11 @@ impl TextureId {
 		TextureId(TextureIdInner::Raw(raw_id))
 	}
 }
+
+// ? Why? Because RawId is already unsafely Sync Send. Plus, it's just an ID, with no data behind, 
+// ? it's supposed to be easily clonnable and passed between threads.
+unsafe impl Sync for TextureId {}
+unsafe impl Send for TextureId {}
 
 /// Pixel arithmetic description for blending operations.
 /// Will be used in an equation:
@@ -973,7 +978,7 @@ impl<'a> UniformsSource<'a> {
 	}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ShaderSource<'a> {
 	Glsl { vertex: &'a str, fragment: &'a str },
 	Msl { program: &'a str },
