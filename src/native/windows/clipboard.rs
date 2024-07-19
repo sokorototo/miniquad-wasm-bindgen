@@ -29,11 +29,7 @@ unsafe fn get_raw_clipboard() -> Option<Vec<u16>> {
 
 	let guard = ClipboardGuard::open();
 
-	if guard.is_none() {
-		#[cfg(feature = "log-impl")]
-		crate::error!("Failed to open clipboard");
-		return None;
-	}
+	guard.as_ref()?;
 
 	// Returns a handle to a clipboard object
 	let clipboard_data: *mut winapi::ctypes::c_void = GetClipboardData(CF_UNICODETEXT);

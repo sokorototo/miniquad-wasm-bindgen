@@ -32,21 +32,21 @@ impl Stage {
              0.0,   r, 0.0,       1.0, 0.0, 1.0, 1.0
         ];
 		// vertex buffer for static geometry
-		let geometry_vertex_buffer = ctx.new_buffer(BufferType::VertexBuffer, BufferUsage::Immutable, BufferSource::slice(&vertices));
+		let geometry_vertex_buffer = ctx.new_buffer(BufferType::VertexBuffer, BufferUsage::Immutable, BufferSource::slice(vertices));
 
 		#[rustfmt::skip]
         let indices: &[u16] = &[
             0, 1, 2,    0, 2, 3,    0, 3, 4,    0, 4, 1,
             5, 1, 2,    5, 2, 3,    5, 3, 4,    5, 4, 1
         ];
-		let index_buffer = ctx.new_buffer(BufferType::IndexBuffer, BufferUsage::Immutable, BufferSource::slice(&indices));
+		let index_buffer = ctx.new_buffer(BufferType::IndexBuffer, BufferUsage::Immutable, BufferSource::slice(indices));
 
 		// empty, dynamic instance data vertex buffer
 		let positions_vertex_buffer = ctx.new_buffer(BufferType::VertexBuffer, BufferUsage::Stream, BufferSource::empty::<Vec3>(MAX_PARTICLES));
 
 		let bindings = Bindings {
 			vertex_buffers: vec![geometry_vertex_buffer, positions_vertex_buffer],
-			index_buffer: index_buffer,
+			index_buffer,
 			images: vec![],
 		};
 

@@ -416,6 +416,12 @@ pub struct GlContext {
 	pub(crate) cache: GlCache,
 }
 
+impl Default for GlContext {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl GlContext {
 	pub fn new() -> GlContext {
 		unsafe {
@@ -608,7 +614,7 @@ impl GlContext {
 
 				let back = &stencil.back;
 				glStencilOpSeparate(GL_BACK, back.fail_op.into(), back.depth_fail_op.into(), back.pass_op.into());
-				glStencilFuncSeparate(GL_BACK, back.test_func.into(), back.test_ref.into(), back.test_mask);
+				glStencilFuncSeparate(GL_BACK, back.test_func.into(), back.test_ref, back.test_mask);
 				glStencilMaskSeparate(GL_BACK, back.write_mask);
 			} else if self.cache.stencil.is_some() {
 				glDisable(GL_STENCIL_TEST);
@@ -661,17 +667,14 @@ impl RenderingBackend for GlContext {
 			let _ = unsafe { std::ffi::CString::from_raw(version_string as _) };
 		}
 
-		let mut glsl_support = GlslSupport::default();
-
 		// this is not quite documented,
 		// but somehow even GL2.1 usually have all the compatibility extensions to support glsl100
 		// It was tested on really old windows machines, virtual machines etc. glsl100 always works!
-		glsl_support.v100 = true;
+		let mut glsl_support = GlslSupport { v100: true, ..Default::default() };
 
-		// on wasm miniquad always creates webgl1 context, with the only glsl available being version 100
 		#[cfg(target_arch = "wasm32")]
 		{
-			// on web, miniquad always loads EXT_shader_texture_lod and OES_standard_derivatives
+			// on web, WebGL2 is used: built-in EXT_shader_texture_lod and OES_standard_derivatives
 			glsl_support.v100_ext = true;
 			glsl_support.v300es = true;
 		}
@@ -682,11 +685,11 @@ impl RenderingBackend for GlContext {
 		}
 
 		// there is no gl3.4, so 4+ and 3.3 covers all modern OpenGL
-		if gl_version_string.starts_with("4") || gl_version_string.starts_with("3.3") {
+		if gl_version_string.starts_with('4') || gl_version_string.starts_with("3.3") {
 			glsl_support.v330 = true;
 		} else
 		// gl 3.0, 3.1, 3.2 maps to 1.30, 1.40, 1.50 glsl versions
-		if gl_version_string.starts_with("3") {
+		if gl_version_string.starts_with('3') {
 			glsl_support.v130 = true;
 		}
 
@@ -788,11 +791,8 @@ impl RenderingBackend for GlContext {
 	fn texture_resize(&mut self, texture: TextureId, width: u32, height: u32, source: Option<&[u8]>) {
 		let mut t = self.textures.get(texture);
 		t.resize(self, width, height, source);
-		match texture.0 {
-			TextureIdInner::Managed(tex_id) => {
-				self.textures.0[tex_id].params = t.params;
-			}
-			_ => {}
+		if let TextureIdInner::Managed(tex_id) = texture.0 {
+			self.textures.0[tex_id].params = t.params;
 		};
 	}
 
@@ -1140,13 +1140,11 @@ impl RenderingBackend for GlContext {
 					let cached_attr = &mut self.cache.attributes[attr_index];
 					*cached_attr = Some(CachedAttribute { attribute, gl_vbuf: vb.gl_buf });
 				}
-			} else {
-				if cached_attr.is_some() {
-					unsafe {
-						glDisableVertexAttribArray(attr_index as GLuint);
-					}
-					*cached_attr = None;
+			} else if cached_attr.is_some() {
+				unsafe {
+					glDisableVertexAttribArray(attr_index as GLuint);
 				}
+				*cached_attr = None;
 			}
 		}
 	}
@@ -1157,14 +1155,14 @@ impl RenderingBackend for GlContext {
 
 		let mut offset = 0;
 
-		for (_, uniform) in shader.uniforms.iter().enumerate() {
+		for uniform in &shader.uniforms {
 			use UniformType::*;
 
 			assert!(offset as i32 <= size as i32 - uniform.uniform_type.size() as i32 / 4, "Uniforms struct does not match shader uniforms layout");
 
 			unsafe {
-				let data = (uniform_ptr as *const f32).offset(offset as isize);
-				let data_int = (uniform_ptr as *const i32).offset(offset as isize);
+				let data = (uniform_ptr as *const f32).add(offset);
+				let data_int = (uniform_ptr as *const i32).add(offset);
 
 				if let Some(gl_loc) = uniform.gl_loc {
 					match uniform.uniform_type {

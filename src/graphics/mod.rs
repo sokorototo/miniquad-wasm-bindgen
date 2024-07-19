@@ -152,7 +152,7 @@ impl VertexFormat {
 	/// Size in bytes
 	pub fn size_bytes(&self) -> i32 {
 		match self {
-			VertexFormat::Float1 => 1 * 4,
+			VertexFormat::Float1 => 4,
 			VertexFormat::Float2 => 2 * 4,
 			VertexFormat::Float3 => 3 * 4,
 			VertexFormat::Float4 => 4 * 4,
@@ -160,11 +160,11 @@ impl VertexFormat {
 			VertexFormat::Byte2 => 2,
 			VertexFormat::Byte3 => 3,
 			VertexFormat::Byte4 => 4,
-			VertexFormat::Short1 => 1 * 2,
+			VertexFormat::Short1 => 2,
 			VertexFormat::Short2 => 2 * 2,
 			VertexFormat::Short3 => 3 * 2,
 			VertexFormat::Short4 => 4 * 2,
-			VertexFormat::Int1 => 1 * 4,
+			VertexFormat::Int1 => 4,
 			VertexFormat::Int2 => 2 * 4,
 			VertexFormat::Int3 => 3 * 4,
 			VertexFormat::Int4 => 4 * 4,
@@ -196,16 +196,13 @@ impl VertexFormat {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Default)]
 pub enum VertexStep {
-	PerVertex,
+	#[default]
+ PerVertex,
 	PerInstance,
 }
 
-impl Default for VertexStep {
-	fn default() -> VertexStep {
-		VertexStep::PerVertex
-	}
-}
 
 #[derive(Clone, Debug)]
 pub struct BufferLayout {
@@ -304,7 +301,7 @@ impl TextureFormat {
 			TextureFormat::RGBA16F => 8 * square,
 			TextureFormat::Depth => 2 * square,
 			TextureFormat::Depth32 => 4 * square,
-			TextureFormat::Alpha => 1 * square,
+			TextureFormat::Alpha => square,
 		}
 	}
 }
@@ -591,10 +588,12 @@ impl From<Comparison> for GLenum {
 /// Specifies how incoming RGBA values (source) and the RGBA in framebuffer (destination)
 /// are combined.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Default)]
 pub enum Equation {
 	/// Adds source and destination. Source and destination are multiplied
 	/// by blending parameters before addition.
-	Add,
+	#[default]
+ Add,
 	/// Subtracts destination from source. Source and destination are
 	/// multiplied by blending parameters before subtraction.
 	Subtract,
@@ -622,11 +621,6 @@ pub enum BlendFactor {
 	SourceAlphaSaturate,
 }
 
-impl Default for Equation {
-	fn default() -> Equation {
-		Equation::Add
-	}
-}
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PrimitiveType {
@@ -821,6 +815,12 @@ pub struct ElapsedQuery {
 
 /// TODO: Complete Implementation
 #[allow(unused_unsafe)]
+impl Default for ElapsedQuery {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ElapsedQuery {
 	pub fn new() -> ElapsedQuery {
 		ElapsedQuery { gl_query: 0 }
@@ -1115,13 +1115,13 @@ pub trait RenderingBackend: Send {
 	/// is recommended instead.
 	fn render_pass_texture(&self, render_pass: RenderPass) -> TextureId {
 		let textures = self.render_pass_color_attachments(render_pass);
-		if textures.len() == 0 {
+		if textures.is_empty() {
 			panic!("depth-only render pass");
 		}
 		if textures.len() != 1 {
 			panic!("multiple render target render pass");
 		}
-		return textures[0];
+		textures[0]
 	}
 	/// For depth-only render pass returns empty slice.
 	fn render_pass_color_attachments(&self, render_pass: RenderPass) -> &[TextureId];

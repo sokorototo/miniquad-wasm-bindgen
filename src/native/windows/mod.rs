@@ -400,7 +400,7 @@ unsafe extern "system" fn win32_wndproc(hwnd: HWND, umsg: UINT, wparam: WPARAM, 
 			let repeat = !!(lparam & 0x40000000) != 0;
 			let mods = key_mods();
 			if chr > 0 {
-				if let Some(chr) = std::char::from_u32(chr as u32) {
+				if let Some(chr) = std::char::from_u32(chr) {
 					event_handler.char_event(chr, mods, repeat);
 				}
 			}
@@ -469,7 +469,7 @@ unsafe fn create_win_icon_from_image(width: u32, height: u32, colors: &[u8]) -> 
 	if color.is_null() {
 		return None;
 	}
-	assert!(target.is_null() == false);
+	assert!(!target.is_null());
 
 	let mask = CreateBitmap(width as _, height as _, 1, 1, std::ptr::null());
 	if mask.is_null() {
@@ -478,9 +478,9 @@ unsafe fn create_win_icon_from_image(width: u32, height: u32, colors: &[u8]) -> 
 	}
 
 	for i in 0..width as usize * height as usize {
-		*(target as *mut u8).offset(i as isize * 4 + 0) = colors[i * 4 + 2];
+		*(target as *mut u8).offset(i as isize * 4) = colors[i * 4 + 2];
 		*(target as *mut u8).offset(i as isize * 4 + 1) = colors[i * 4 + 1];
-		*(target as *mut u8).offset(i as isize * 4 + 2) = colors[i * 4 + 0];
+		*(target as *mut u8).offset(i as isize * 4 + 2) = colors[i * 4];
 		*(target as *mut u8).offset(i as isize * 4 + 3) = colors[i * 4 + 3];
 	}
 
@@ -574,7 +574,7 @@ unsafe fn create_window(window_title: &str, fullscreen: bool, resizable: bool, w
 		NULL as _,                   // lparam
 	);
 
-	assert!(hwnd.is_null() == false);
+	assert!(!hwnd.is_null());
 
 	let rawinputdevice = RAWINPUTDEVICE {
 		usUsagePage: HID_USAGE_PAGE_GENERIC,
@@ -588,7 +588,7 @@ unsafe fn create_window(window_title: &str, fullscreen: bool, resizable: bool, w
 
 	ShowWindow(hwnd, SW_SHOW);
 	let dc = GetDC(hwnd);
-	assert!(dc.is_null() == false);
+	assert!(!dc.is_null());
 
 	(hwnd, dc)
 }
@@ -610,7 +610,7 @@ unsafe fn create_msg_window() -> (HWND, HDC) {
 		GetModuleHandleW(NULL as _),
 		NULL,
 	);
-	assert!(msg_hwnd.is_null() == false, "Win32: failed to create helper window!");
+	assert!(!msg_hwnd.is_null(), "Win32: failed to create helper window!");
 	ShowWindow(msg_hwnd, SW_HIDE);
 	let mut msg = std::mem::zeroed();
 	while PeekMessageW(&mut msg as _, msg_hwnd, 0, 0, PM_REMOVE) != 0 {
@@ -618,7 +618,7 @@ unsafe fn create_msg_window() -> (HWND, HDC) {
 		DispatchMessageW(&msg);
 	}
 	let msg_dc = GetDC(msg_hwnd);
-	assert!(msg_dc.is_null() == false, "Win32: failed to obtain helper window DC!");
+	assert!(!msg_dc.is_null(), "Win32: failed to obtain helper window DC!");
 
 	(msg_hwnd, msg_dc)
 }

@@ -153,11 +153,9 @@ pub unsafe fn gl_choose_fbconfig(desired: &mut GlFbconfig, alternatives: &[GlFbc
 			}
 			if missing < least_missing {
 				closest = Some(i);
-			} else if missing == least_missing {
-				if color_diff < least_color_diff || color_diff == least_color_diff && extra_diff < least_extra_diff {
-					closest = Some(i);
-				}
-			}
+			} else if missing == least_missing && (color_diff < least_color_diff || color_diff == least_color_diff && extra_diff < least_extra_diff) {
+   					closest = Some(i);
+   				}
 
 			// Figure out if the current one is better than the best one found so far
 			//  Least number of missing buffers is the most important heuristic,
@@ -194,7 +192,7 @@ unsafe fn get_wgl_proc_address<T>(libopengl32: &mut LibOpengl32, proc: &str) -> 
 	if proc.is_null() {
 		return None;
 	}
-	return Some(std::mem::transmute_copy(&proc));
+	Some(std::mem::transmute_copy(&proc))
 }
 
 impl Wgl {
@@ -212,7 +210,7 @@ impl Wgl {
 		if rc.is_null() {
 			panic!("WGL: Failed to create dummy context");
 		}
-		if (display.libopengl32.wglMakeCurrent)(display.msg_dc, rc) == false {
+		if !(display.libopengl32.wglMakeCurrent)(display.msg_dc, rc) {
 			panic!("WGL: Failed to make context current");
 		}
 
@@ -226,7 +224,7 @@ impl Wgl {
 			if let Some(getExtensionsStringEXT) = GetExtensionsStringEXT {
 				let extensions = getExtensionsStringEXT();
 
-				if extensions.is_null() == false {
+				if !extensions.is_null() {
 					let extensions_string = std::ffi::CStr::from_ptr(extensions).to_string_lossy();
 					if extensions_string.contains(ext) {
 						return true;
@@ -236,7 +234,7 @@ impl Wgl {
 
 			if let Some(getExtensionsStringARB) = GetExtensionsStringARB {
 				let extensions = getExtensionsStringARB((display.libopengl32.wglGetCurrentDC)());
-				if extensions.is_null() == false {
+				if !extensions.is_null() {
 					let extensions_string = std::ffi::CStr::from_ptr(extensions).to_string_lossy();
 
 					if extensions_string.contains(ext) {
@@ -244,7 +242,7 @@ impl Wgl {
 					}
 				}
 			}
-			return false;
+			false
 		};
 
 		let arb_multisample = wgl_ext_supported("WGL_ARB_multisample");
@@ -276,7 +274,7 @@ impl Wgl {
 		if !(self.GetPixelFormatAttribivARB.unwrap())(display.dc, pixel_format, 0, 1, &attrib, &mut value as *mut _) {
 			panic!("WGL: Failed to retrieve pixel format attribute");
 		}
-		return value;
+		value
 	}
 
 	unsafe fn wgl_find_pixel_format(&self, display: &mut WindowsDisplay, sample_count: i32) -> u32 {

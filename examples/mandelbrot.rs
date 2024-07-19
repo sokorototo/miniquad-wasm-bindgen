@@ -54,7 +54,7 @@ impl Mandelbrot {
 
 		let bindings = Bindings {
 			vertex_buffers: vec![vertex_buffer],
-			index_buffer: index_buffer,
+			index_buffer,
 			images: Vec::new(),
 		};
 
@@ -81,14 +81,14 @@ impl Mandelbrot {
 		}
 	}
 	// Returns two floats (x and y) from -0.5 to 0.5, with (0.0, 0.0) being the center of the screen
-	fn norm_mouse_pos(self: &Self, x: f32, y: f32) -> (f32, f32) {
+	fn norm_mouse_pos(&self, x: f32, y: f32) -> (f32, f32) {
 		let screen_size = {
 			let (w, h) = window::screen_size();
 			(w as f32, h as f32)
 		};
-		let pos = (4.0 * (x / screen_size.0 - 0.5).powi(3), 4.0 * (y / screen_size.1 - 0.5).powi(3));
+		
 
-		pos
+		(4.0 * (x / screen_size.0 - 0.5).powi(3), 4.0 * (y / screen_size.1 - 0.5).powi(3))
 	}
 }
 
