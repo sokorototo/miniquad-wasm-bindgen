@@ -414,8 +414,6 @@ pub struct GlContext {
 	textures: Textures,
 	default_framebuffer: GLuint,
 	pub(crate) cache: GlCache,
-
-	pub(crate) features: Features,
 }
 
 impl GlContext {
@@ -435,10 +433,6 @@ impl GlContext {
 				passes: ResourceManager::default(),
 				buffers: ResourceManager::default(),
 				textures: Textures(vec![]),
-				features: Features {
-					instancing: !crate::native::gl::is_gl2(),
-					..Default::default()
-				},
 				cache: GlCache {
 					stored_index_buffer: 0,
 					stored_index_type: None,
@@ -459,10 +453,6 @@ impl GlContext {
 				},
 			}
 		}
-	}
-
-	pub fn features(&self) -> &Features {
-		&self.features
 	}
 }
 
@@ -704,7 +694,6 @@ impl RenderingBackend for GlContext {
 			backend: Backend::OpenGl,
 			gl_version_string,
 			glsl_support,
-			features: self.features.clone(),
 		}
 	}
 	fn new_shader(&mut self, shader: ShaderSource, meta: ShaderMeta) -> Result<ShaderId, ShaderError> {
@@ -1144,9 +1133,7 @@ impl RenderingBackend for GlContext {
 
 					unsafe {
 						glVertexAttribPointer(attr_index as GLuint, attribute.size, attribute.type_, GL_FALSE as u8, attribute.stride, attribute.offset as *mut _);
-						if self.features.instancing {
-							glVertexAttribDivisor(attr_index as GLuint, attribute.divisor as u32);
-						}
+						glVertexAttribDivisor(attr_index as GLuint, attribute.divisor as u32);
 						glEnableVertexAttribArray(attr_index as GLuint);
 					};
 
@@ -1291,13 +1278,7 @@ impl RenderingBackend for GlContext {
 	}
 
 	fn draw(&self, base_element: i32, num_elements: i32, num_instances: i32) {
-		assert!(self.cache.cur_pipeline.is_some(), "Drawing without any binded pipeline");
-
-		if !self.features.instancing && num_instances != 1 {
-			#[cfg(feature = "log-impl")]
-			crate::error!("Instanced rendering is not supported by the GPU, Ignoring Draw Call");
-			return;
-		}
+		assert!(self.cache.cur_pipeline.is_some(), "Drawing without bound pipeline");
 
 		let pip = &self.pipelines[self.cache.cur_pipeline.unwrap().0];
 		let primitive_type = pip.params.primitive_type.into();

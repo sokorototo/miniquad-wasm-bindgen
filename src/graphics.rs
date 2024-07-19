@@ -1022,9 +1022,6 @@ pub struct ContextInfo {
 	/// miniquad_wasm_bindgen will take a guess based on GL_VERSION_STRING, current platform and implementation details.
 	/// Would be all false on metal.
 	pub glsl_support: GlslSupport,
-	/// List of platform-dependent features that miniquad_wasm_bindgen failed to make cross-platforms
-	/// and therefore they might be missing.
-	pub features: Features,
 }
 
 pub trait RenderingBackend: Send {

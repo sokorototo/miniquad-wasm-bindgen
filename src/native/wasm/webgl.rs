@@ -352,10 +352,6 @@ mod counter {
 	}
 }
 
-pub fn is_gl2() -> bool {
-	true
-}
-
 // ================= DATA EXTRACTION =================
 pub fn glGetError() -> GLenum {
 	get_gl().get_error()
