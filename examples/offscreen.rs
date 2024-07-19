@@ -20,9 +20,10 @@ impl Stage {
 		let color_img = ctx.new_render_texture(TextureParams {
 			width: 256,
 			height: 256,
-			format: TextureFormat::RGBA8,
+			format: TextureFormat::RGB8,
 			..Default::default()
 		});
+
 		let depth_img = ctx.new_render_texture(TextureParams {
 			width: 256,
 			height: 256,
@@ -195,7 +196,7 @@ fn main() {
 	let metal = std::env::args().nth(1).as_deref() == Some("metal");
 	conf.platform.apple_gfx_api = if metal { conf::AppleGfxApi::Metal } else { conf::AppleGfxApi::OpenGl };
 
-	miniquad_wasm_bindgen::start(conf, move || Box::new(Stage::new()));
+	start(conf, move || Box::new(Stage::new()));
 }
 
 mod display_shader {

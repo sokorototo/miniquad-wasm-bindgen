@@ -402,7 +402,7 @@ impl TextureId {
 	}
 }
 
-// ? Why? Because RawId is already unsafely Sync Send. Plus, it's just an ID, with no data behind, 
+// ? Why? Because RawId is already unsafely Sync Send. Plus, it's just an ID, with no data behind,
 // ? it's supposed to be easily clonnable and passed between threads.
 unsafe impl Sync for TextureId {}
 unsafe impl Send for TextureId {}
@@ -916,6 +916,7 @@ pub struct Arg<'a> {
 	_phantom: std::marker::PhantomData<&'a ()>,
 }
 
+#[derive(Debug)]
 pub enum TextureSource<'a> {
 	Empty,
 	Bytes(&'a [u8]),
@@ -990,6 +991,7 @@ pub enum RawId {
 	#[cfg(target_vendor = "apple")]
 	Metal(*mut objc::runtime::Object),
 }
+
 unsafe impl Send for RawId {}
 unsafe impl Sync for RawId {}
 
@@ -1025,7 +1027,7 @@ pub struct ContextInfo {
 	pub features: Features,
 }
 
-pub trait RenderingBackend {
+pub trait RenderingBackend: Send {
 	fn info(&self) -> ContextInfo;
 	/// For metal context's ShaderSource should contain MSL source string, for GL - glsl.
 	/// If in doubt, _most_ OpenGL contexts support "#version 100" glsl shaders.

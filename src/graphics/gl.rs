@@ -54,16 +54,29 @@ struct Texture {
 /// Converts from TextureFormat to (internal_format, format, pixel_type)
 impl From<TextureFormat> for (GLenum, GLenum, GLenum) {
 	fn from(format: TextureFormat) -> Self {
+		#[cfg(target_arch = "wasm32")]
+		{
+			use web_sys::WebGl2RenderingContext;
+
+			match format {
+				// WebGL2 uses slightly different constants?
+				TextureFormat::RGB8 => (WebGl2RenderingContext::RGB, WebGl2RenderingContext::RGB, WebGl2RenderingContext::UNSIGNED_BYTE),
+				TextureFormat::RGBA8 => (WebGl2RenderingContext::RGBA8, WebGl2RenderingContext::RGBA, WebGl2RenderingContext::UNSIGNED_BYTE),
+				TextureFormat::RGBA16F => (WebGl2RenderingContext::RGBA16F, WebGl2RenderingContext::RGBA, WebGl2RenderingContext::FLOAT),
+				TextureFormat::Depth => (WebGl2RenderingContext::DEPTH_COMPONENT24, WebGl2RenderingContext::DEPTH_COMPONENT, WebGl2RenderingContext::UNSIGNED_INT),
+				TextureFormat::Depth32 => (WebGl2RenderingContext::DEPTH_COMPONENT32F, WebGl2RenderingContext::DEPTH_COMPONENT, WebGl2RenderingContext::FLOAT),
+				TextureFormat::Alpha => (WebGl2RenderingContext::ALPHA, WebGl2RenderingContext::ALPHA, WebGl2RenderingContext::UNSIGNED_BYTE),
+			}
+		}
+
+		#[cfg(not(target_arch = "wasm32"))]
 		match format {
 			TextureFormat::RGB8 => (GL_RGB, GL_RGB, GL_UNSIGNED_BYTE),
 			TextureFormat::RGBA8 => (GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE),
 			TextureFormat::RGBA16F => (GL_RGBA16F, GL_RGBA, GL_FLOAT),
 			TextureFormat::Depth => (GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT),
 			TextureFormat::Depth32 => (GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_FLOAT),
-			#[cfg(target_arch = "wasm32")]
-			TextureFormat::Alpha => (GL_ALPHA, GL_ALPHA, GL_UNSIGNED_BYTE),
-			#[cfg(not(target_arch = "wasm32"))]
-			TextureFormat::Alpha => (GL_R8, GL_RED, GL_UNSIGNED_BYTE), // texture updates will swizzle Red -> Alpha to match WASM
+			TextureFormat::Alpha => (GL_R8, GL_RED, GL_UNSIGNED_BYTE),
 		}
 	}
 }
@@ -166,8 +179,6 @@ impl Texture {
 
 			match source {
 				TextureSource::Empty => {
-					// not quite sure if glTexImage2D(null) is really a requirement
-					// but it was like this for quite a while and apparently it works?
 					glTexImage2D(
 						GL_TEXTURE_2D,
 						0,
@@ -708,6 +719,7 @@ impl RenderingBackend for GlContext {
 
 	fn new_texture(&mut self, access: TextureAccess, source: TextureSource, params: TextureParams) -> TextureId {
 		let texture = Texture::new(self, access, source, params);
+
 		self.textures.0.push(texture);
 		TextureId(TextureIdInner::Managed(self.textures.0.len() - 1))
 	}
@@ -827,13 +839,14 @@ impl RenderingBackend for GlContext {
 
 	fn new_render_pass_mrt(&mut self, color_img: &[TextureId], depth_img: Option<TextureId>) -> RenderPass {
 		if color_img.is_empty() && depth_img.is_none() {
-			panic!("Render pass should have at least one non-none target");
+			panic!("Render pass should have at least one target");
 		}
 		let mut gl_fb = 0;
 
 		unsafe {
 			glGenFramebuffers(1, &mut gl_fb);
 			glBindFramebuffer(GL_FRAMEBUFFER, gl_fb);
+
 			for (i, color_img) in color_img.iter().enumerate() {
 				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i as u32, GL_TEXTURE_2D, self.textures.get(*color_img).raw, 0);
 			}

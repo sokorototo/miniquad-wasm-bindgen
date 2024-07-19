@@ -180,6 +180,7 @@ macro_rules! __log_line {
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "android", target_os = "ios")))]
 pub fn __private_api_log_lit(message: &str, _level: Level, &(_target, _module_path, _file, _line): &(&str, &'static str, &'static str, u32)) {
+	// TODO: Add [LEVEL] prefixes
 	eprintln!("{}", message);
 }
 
@@ -214,7 +215,7 @@ pub fn __private_api_log_lit(message: &str, level: Level, &(_, _, file, line): &
 			let style = "color: grey; font-weight: bold".into();
 			let message = format!("{}:{}\n{}", file, line, message).into();
 
-			console::debug_3(&header, &style, &message);
+			console::log_3(&header, &style, &message);
 		}
 		Level::Error => {
 			let header = "%c[ERROR]".into();

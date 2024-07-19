@@ -99,7 +99,8 @@ pub const GL_DECR: u32 = 0x1E03;
 pub const GL_FRAGMENT_SHADER: u32 = 0x8B30;
 pub const GL_FLOAT: u32 = 0x1406;
 pub const GL_TEXTURE_MAX_LOD: u32 = 0x813B;
-pub const GL_DEPTH_COMPONENT: u32 = 0x1902;
+// TODO: Use exports from WebGl2RenderingContext
+pub const GL_DEPTH_COMPONENT: u32 = WebGl2RenderingContext::DEPTH_COMPONENT;
 pub const GL_ONE_MINUS_DST_ALPHA: u32 = 0x0305;
 pub const GL_COLOR: u32 = 0x1800;
 pub const GL_TEXTURE_2D_ARRAY: u32 = 0x8C1A;
@@ -373,9 +374,9 @@ pub fn glGetString(name: GLenum) -> *const GLubyte {
 
 // TODO: Correct implementation of glGetIntegerv
 #[inline(always)]
-pub unsafe fn glGetIntegerv(_: u32, data: *mut GLint) {
+pub(crate) unsafe fn glGetIntegerv(_: u32, data: *mut GLint) {
 	#[cfg(feature = "log-impl")]
-	crate::warn!("STUB: glGetIntegerv isn't supported on WebGL");
+	crate::warn!("STUB: glGetIntegerv has an incomplete implementation on WebGL2");
 
 	let data: &mut GLint = data.as_mut().unwrap();
 	*data = 0;
