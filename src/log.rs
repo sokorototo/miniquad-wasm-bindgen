@@ -179,9 +179,16 @@ macro_rules! __log_line {
 }
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "android", target_os = "ios")))]
-pub fn __private_api_log_lit(message: &str, _level: Level, &(_target, _module_path, _file, _line): &(&str, &'static str, &'static str, u32)) {
-	// TODO: Add [LEVEL] prefixes
-	eprintln!("{}", message);
+pub fn __private_api_log_lit(message: &str, level: Level, &(_target, _module_path, _file, _line): &(&str, &'static str, &'static str, u32)) {
+	let prefix = match level {
+		Level::Error => "ERROR",
+		Level::Warn => "WARN",
+		Level::Info => "INFO",
+		Level::Debug => "DEBUG",
+		Level::Trace => "TRACE",
+	};
+
+	eprintln!("[{}]({}:{}:0) {}", prefix, _file, _line, message);
 }
 
 #[cfg(target_arch = "wasm32")]

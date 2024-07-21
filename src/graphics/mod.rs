@@ -195,14 +195,12 @@ impl VertexFormat {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
-#[derive(Default)]
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub enum VertexStep {
 	#[default]
- PerVertex,
+	PerVertex,
 	PerInstance,
 }
-
 
 #[derive(Clone, Debug)]
 pub struct BufferLayout {
@@ -587,13 +585,12 @@ impl From<Comparison> for GLenum {
 
 /// Specifies how incoming RGBA values (source) and the RGBA in framebuffer (destination)
 /// are combined.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-#[derive(Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub enum Equation {
 	/// Adds source and destination. Source and destination are multiplied
 	/// by blending parameters before addition.
 	#[default]
- Add,
+	Add,
 	/// Subtracts destination from source. Source and destination are
 	/// multiplied by blending parameters before subtraction.
 	Subtract,
@@ -620,7 +617,6 @@ pub enum BlendFactor {
 	OneMinusValue(BlendValue),
 	SourceAlphaSaturate,
 }
-
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PrimitiveType {
@@ -816,11 +812,12 @@ pub struct ElapsedQuery {
 /// TODO: Complete Implementation
 #[allow(unused_unsafe)]
 impl Default for ElapsedQuery {
-    fn default() -> Self {
-        Self::new()
-    }
+	fn default() -> Self {
+		Self::new()
+	}
 }
 
+#[allow(unused_unsafe)]
 impl ElapsedQuery {
 	pub fn new() -> ElapsedQuery {
 		ElapsedQuery { gl_query: 0 }
