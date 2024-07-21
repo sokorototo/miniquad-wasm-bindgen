@@ -5,13 +5,13 @@ use crate::native::ios;
 
 /// A file-system loading error.
 ///
-/// On `cfg!(target_arch = "wasm32")` contains a 5th variant `DownloadFailed((web_sys::ProgressEvent, Option<String>))` that stores download errors.
+/// On `cfg!(target_arch = "wasm32")` contains a 5th variant `DownloadFailed(String)` containing the response status text.
 #[derive(Debug)]
 pub enum Error {
 	IOError(std::io::Error),
 	/// XmlHttpRequest failed, returns [`ProgressEvent`](https://developer.mozilla.org/en-US/docs/Web/API/ProgressEvent) and Status Text
 	#[cfg(target_arch = "wasm32")]
-	DownloadFailed((web_sys::ProgressEvent, Option<String>)),
+	DownloadFailed(String),
 	AndroidAssetLoadingError,
 	/// MainBundle pathForResource returned null
 	IOSAssetNoSuchFile,
@@ -35,7 +35,7 @@ pub type Response = Result<Vec<u8>, Error>;
 
 /// Filesystem path on desktops or HTTP URL in WASM.
 ///
-/// Check for `DownloadFailed((web_sys::ProgressEvent, Option<String>))` on WASM
+/// Check for `DownloadFailed(String)` on WASM
 pub fn load_file<F: FnOnce(Response) + 'static>(path: &str, on_loaded: F) {
 	#[cfg(target_arch = "wasm32")]
 	wasm::load_file(path, on_loaded);
@@ -68,43 +68,81 @@ fn load_file_android<F: FnOnce(Response)>(path: &str, on_loaded: F) {
 mod wasm {
 	use super::{Error, Response};
 
-	use wasm_bindgen::{closure::Closure, JsCast, UnwrapThrowExt};
+	use wasm_bindgen::{closure::Closure, JsCast, JsValue, UnwrapThrowExt};
+	use wasm_bindgen_futures::*;
 	use web_sys::*;
 
 	pub fn load_file<F: FnOnce(Response) + 'static>(path: &str, on_loaded: F) {
-		if let Ok(xhr) = XmlHttpRequest::new() {
-			if xhr.open("GET", path).is_ok() {
-				xhr.set_response_type(XmlHttpRequestResponseType::Arraybuffer);
-				xhr.set_timeout(5 * 1000); // 5 seconds
+		let window = window().unwrap();
 
-				let xhr_1 = xhr.clone();
-				let present = Closure::once_into_js(move |ev: ProgressEvent| {
-					match xhr_1.response() {
-						Ok(d) => {
-							if xhr_1.status().unwrap() != 200 {
+		// create abort signal
+		let signal = || {
+			let controller = AbortController::new().ok()?;
+			let signal = controller.signal();
+			let path = path.to_string();
+
+			let closure: Closure<dyn Fn()> = Closure::new(move || {
+				#[cfg(feature = "log-impl")]
+				crate::error!("A load_file request: ({}), timed out", path);
+				controller.abort()
+			});
+			let js_callback = closure.into_js_value();
+
+			window.set_timeout_with_callback_and_timeout_and_arguments_0(js_callback.dyn_ref()?, 5 * 1000).ok()?;
+
+			Some(signal)
+		};
+
+		let mut opts = RequestInit::new();
+		opts.method("GET");
+		opts.mode(RequestMode::Cors);
+		opts.signal(signal().as_ref());
+
+		if let Ok(req) = Request::new_with_str_and_init(path, &opts) {
+			let promise = window.fetch_with_request(&req);
+			let future = JsFuture::from(promise);
+
+			spawn_local(async move {
+				match future.await {
+					Ok(res) => {
+						let res: web_sys::Response = res.dyn_into().unwrap();
+
+						match !res.ok() {
+							true => {
+								let status_text = res.status_text();
 								#[cfg(feature = "log-impl")]
-								crate::error!("XmlHttpRequest failed: {:?}", xhr_1.status_text());
-								on_loaded(Err(Error::DownloadFailed((ev, xhr_1.status_text().ok()))));
-							} else {
-								let array = d.dyn_into::<js_sys::ArrayBuffer>().unwrap_throw();
-								let array = js_sys::Uint8Array::new(&array).to_vec();
-								on_loaded(Ok(array));
+								crate::error!("fetch failed: {:?}", &status_text);
+								on_loaded(Err(Error::DownloadFailed(status_text)));
+							}
+							false => {
+								let ab = res.array_buffer().unwrap_throw();
+								match JsFuture::from(ab).await {
+									Ok(ab) => {
+										let array = js_sys::Uint8Array::new(&ab).to_vec();
+										return on_loaded(Ok(array));
+									}
+									Err(err) => {
+										let msg = "Unable to extract data from array buffer";
+
+										#[cfg(feature = "log-impl")]
+										console::error_2(&JsValue::from_str(msg), &err);
+
+										on_loaded(Err(Error::DownloadFailed(msg.into())));
+									}
+								}
 							}
 						}
-						Err(_) => on_loaded(Err(Error::DownloadFailed((ev, xhr_1.status_text().ok())))),
-					};
-				});
+					}
+					Err(err) => {
+						let msg = "Unable to call window.fetch, check console for error logs";
 
-				xhr.set_ontimeout(Some(present.as_ref().unchecked_ref()));
-				xhr.set_onerror(Some(present.as_ref().unchecked_ref()));
-				xhr.set_onload(Some(present.as_ref().unchecked_ref()));
-			} else {
-				let err = (ProgressEvent::new("Unable to Open XmlHttpRequest").unwrap(), None);
-				on_loaded(Err(Error::DownloadFailed(err)));
-			};
+						#[cfg(feature = "log-impl")]
+						console::error_2(&JsValue::from_str(msg), &err);
 
-			// Send the request
-			xhr.send().unwrap();
+						on_loaded(Err(Error::DownloadFailed(msg.into())));
+					}
+				}
+			});
 		}
 	}
 }

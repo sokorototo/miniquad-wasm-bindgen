@@ -85,8 +85,8 @@ use std::sync::{Mutex, OnceLock};
 static NATIVE_DISPLAY: OnceLock<Mutex<native::NativeDisplayData>> = OnceLock::new();
 
 fn set_display(display: native::NativeDisplayData) {
-	if let Err(_) = NATIVE_DISPLAY.set(Mutex::new(display)) {
-		panic!("UNable to initialize NATIVE_DISPLAY");
+	if NATIVE_DISPLAY.set(Mutex::new(display)).is_err() {
+		panic!("Unable to initialize NATIVE_DISPLAY");
 	};
 }
 
