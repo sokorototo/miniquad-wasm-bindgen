@@ -79,13 +79,8 @@ mod wasm {
 		let signal = || {
 			let controller = AbortController::new().ok()?;
 			let signal = controller.signal();
-			let path = path.to_string();
 
-			let closure: Closure<dyn Fn()> = Closure::new(move || {
-				#[cfg(feature = "log-impl")]
-				crate::error!("A load_file request: ({}), timed out", path);
-				controller.abort()
-			});
+			let closure: Closure<dyn Fn()> = Closure::new(move || controller.abort());
 			let js_callback = closure.into_js_value();
 
 			window.set_timeout_with_callback_and_timeout_and_arguments_0(js_callback.dyn_ref()?, 5 * 1000).ok()?;
