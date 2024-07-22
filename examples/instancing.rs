@@ -34,8 +34,6 @@ impl Stage {
 		// vertex buffer for static geometry
 		let geometry_vertex_buffer = ctx.new_buffer(BufferType::VertexBuffer, BufferUsage::Immutable, BufferSource::slice(vertices));
 
-		info!("Say hi to skibidi rizz");
-
 		#[rustfmt::skip]
         let indices: &[u16] = &[
             0, 1, 2,    0, 2, 3,    0, 3, 4,    0, 4, 1,
