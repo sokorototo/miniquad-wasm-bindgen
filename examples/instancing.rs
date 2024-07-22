@@ -149,11 +149,7 @@ impl EventHandler for Stage {
 }
 
 fn main() {
-	let mut conf = conf::Conf::default();
-	let metal = std::env::args().nth(1).as_deref() == Some("metal");
-	conf.platform.apple_gfx_api = if metal { conf::AppleGfxApi::Metal } else { conf::AppleGfxApi::OpenGl };
-
-	start(conf, move || Box::new(Stage::new()));
+	start(Default::default(), move || Box::new(Stage::new()));
 }
 
 mod shader {
