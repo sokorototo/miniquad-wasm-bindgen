@@ -9,12 +9,12 @@ struct Vertex {
 struct Stage {
 	pipeline: Pipeline,
 	bindings: Bindings,
-	ctx: Box<dyn RenderingBackend>,
+	backend: Box<dyn RenderingBackend>,
 }
 
 impl Stage {
 	pub fn new() -> Stage {
-		let mut ctx: Box<dyn RenderingBackend> = window::new_rendering_backend();
+		let mut backend: Box<dyn RenderingBackend> = window::new_rendering_backend();
 
 		#[rustfmt::skip]
         let vertices: [Vertex; 3] = [
@@ -22,27 +22,27 @@ impl Stage {
             Vertex { pos : [  0.5, -0.5 ], color: [0, 0xFF, 0, 0xFF] },
             Vertex { pos : [  0.0,  0.5 ], color: [0, 0, 0xFF, 0xFF] },
         ];
-		let vertex_buffer = ctx.new_buffer(BufferType::VertexBuffer, BufferUsage::Immutable, BufferSource::slice(&vertices));
+		let vertex_buffer = backend.new_buffer(BufferType::VertexBuffer, BufferUsage::Immutable, BufferSource::slice(&vertices));
 
 		let indices: [u16; 3] = [0, 1, 2];
-		let index_buffer = ctx.new_buffer(BufferType::IndexBuffer, BufferUsage::Immutable, BufferSource::slice(&indices));
+		let index_buffer = backend.new_buffer(BufferType::IndexBuffer, BufferUsage::Immutable, BufferSource::slice(&indices));
 
 		let bindings = Bindings {
 			vertex_buffers: vec![vertex_buffer],
-			index_buffer: index_buffer,
+			index_buffer,
 			images: vec![],
 		};
 
-		let shader = ctx.new_shader(ShaderSource::new(shader::VERTEX, shader::FRAGMENT), shader::meta()).unwrap();
+		let shader = backend.new_shader(ShaderSource::new(shader::VERTEX, shader::FRAGMENT), shader::meta()).unwrap();
 
-		let pipeline = ctx.new_pipeline(
+		let pipeline = backend.new_pipeline(
 			&[BufferLayout::default()],
 			&[VertexAttribute::new("in_pos", VertexFormat::Float2), VertexAttribute::new("in_color", VertexFormat::Byte4)],
 			shader,
 			PipelineParams::default(),
 		);
 
-		Stage { pipeline, bindings, ctx }
+		Stage { pipeline, bindings, backend }
 	}
 }
 
@@ -50,14 +50,14 @@ impl EventHandler for Stage {
 	fn update(&mut self) {}
 
 	fn draw(&mut self) {
-		self.ctx.begin_default_pass(Default::default());
+		self.backend.begin_default_pass(Default::default());
 
-		self.ctx.apply_pipeline(&self.pipeline);
-		self.ctx.apply_bindings(&self.bindings);
-		self.ctx.draw(0, 3, 1);
-		self.ctx.end_render_pass();
+		self.backend.apply_pipeline(&self.pipeline);
+		self.backend.apply_bindings(&self.bindings);
+		self.backend.draw(0, 3, 1);
+		self.backend.end_render_pass();
 
-		self.ctx.commit_frame();
+		self.backend.commit_frame();
 	}
 }
 
