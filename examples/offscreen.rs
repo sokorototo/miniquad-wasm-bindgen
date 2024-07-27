@@ -250,42 +250,6 @@ mod offscreen_shader {
     }
     "#;
 
-	pub const METAL: &str = r#"#include <metal_stdlib>
-
-    using namespace metal;
-
-    struct Uniforms
-    {
-        float4x4 mvp;
-    };
-
-    struct Vertex
-    {
-        float3 in_pos      [[attribute(0)]];
-        float4 in_color    [[attribute(1)]];
-    };
-
-    struct RasterizerData
-    {
-        float4 position [[position]];
-        float4 color [[user(locn0)]];
-    };
-
-    vertex RasterizerData vertexShader(Vertex v [[stage_in]], constant Uniforms& uniforms [[buffer(0)]])
-    {
-        RasterizerData out;
-
-        out.position = uniforms.mvp * float4(v.in_pos, 1.0) * float4(1.0, -1.0, 1.0, 1.0);
-        out.color = v.in_color;
-
-        return out;
-    }
-
-    fragment float4 fragmentShader(RasterizerData in [[stage_in]])
-    {
-        return in.color;
-    }"#;
-
 	pub fn meta() -> ShaderMeta {
 		ShaderMeta {
 			images: vec![],

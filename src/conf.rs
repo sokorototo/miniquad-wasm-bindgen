@@ -93,9 +93,8 @@ pub struct PlatformSettings {
 	/// `request_update` may be used from other threads to "wake up" the window.
 	pub blocking_event_loop: bool,
 
-	/// Whether the framebuffer should have an alpha channel.
-	/// Currently supported only on Android and Web. On Web, sets `WebGlContextAttributes.alpha = true`.
-	/// TODO: Document(and check) what does it actually mean on android. Transparent window?
+	/// On Web, sets `WebGlContextAttributes.alpha = true`.
+	/// On Linux, enables transparent windows.
 	pub framebuffer_alpha: bool,
 
 	/// Whether to draw the default window decorations on Wayland.
@@ -125,25 +124,15 @@ impl Default for PlatformSettings {
 pub struct Conf {
 	/// Title of the window, defaults to an empty string.
 	pub window_title: String,
-	/// The preferred width of the window, ignored on wasm/android.
-	///
-	/// Default: 800
+	/// The preferred width of the window or canvas.
 	pub window_width: u32,
-	/// The preferred height of the window, ignored on wasm/android.
-	///
-	/// Default: 600
+	/// The preferred height of the window or canvas.
 	pub window_height: u32,
 	/// Whether the rendering canvas is full-resolution on HighDPI displays.
-	///
-	/// Default: false
 	pub high_dpi: bool,
-	/// Whether the window should be created in fullscreen mode, ignored on wasm/android.
-	///
-	/// Default: false
+	/// Whether the window should be created in fullscreen mode, ignored on web.
 	pub fullscreen: bool,
 	/// MSAA sample count
-	///
-	/// Default: 1
 	pub sample_count: i32,
 
 	/// Determines if the application user can resize the window
@@ -152,7 +141,6 @@ pub struct Conf {
 	/// Miniquad allows to change the window icon programmatically.
 	/// The icon will be used as
 	/// - taskbar and titlebar icons on Windows.
-	/// - dock and titlebar icon on  MacOs.
 	/// - TODO: favicon on HTML5
 	/// - TODO: taskbar and titlebar(highly dependent on the WM) icons on Linux
 	pub icon: Option<Icon>,
@@ -191,7 +179,6 @@ impl std::fmt::Debug for Icon {
 }
 
 // reasonable defaults for PC and mobiles are slightly different
-#[cfg(not(target_os = "android"))]
 impl Default for Conf {
 	fn default() -> Conf {
 		Conf {
@@ -202,23 +189,6 @@ impl Default for Conf {
 			fullscreen: false,
 			sample_count: 1,
 			window_resizable: true,
-			icon: Some(Icon::miniquad_logo()),
-			platform: Default::default(),
-		}
-	}
-}
-
-#[cfg(target_os = "android")]
-impl Default for Conf {
-	fn default() -> Conf {
-		Conf {
-			window_title: "Miniquad WBG Window".to_owned(),
-			window_width: 800,
-			window_height: 600,
-			high_dpi: true,
-			fullscreen: true,
-			sample_count: 1,
-			window_resizable: false,
 			icon: Some(Icon::miniquad_logo()),
 			platform: Default::default(),
 		}

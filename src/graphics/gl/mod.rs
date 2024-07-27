@@ -396,12 +396,10 @@ struct Textures(Vec<Texture>);
 impl Textures {
 	fn get(&self, texture: TextureId) -> Texture {
 		match texture.0 {
-			TextureIdInner::Raw(RawId::OpenGl(texture)) => Texture {
+			TextureIdInner::Raw(RawId(texture)) => Texture {
 				raw: texture,
 				params: Default::default(),
 			},
-			#[cfg(target_vendor = "apple")]
-			TextureIdInner::Raw(RawId::Metal(..)) => panic!("Metal texture in OpenGL context!"),
 			TextureIdInner::Managed(texture) => self.0[texture],
 		}
 	}
@@ -816,7 +814,7 @@ impl RenderingBackend for GlContext {
 
 	unsafe fn texture_raw_id(&self, texture: TextureId) -> RawId {
 		let texture = self.textures.get(texture);
-		RawId::OpenGl(texture.raw)
+		RawId(texture.raw)
 	}
 
 	fn new_render_pass_mrt(&mut self, color_img: &[TextureId], depth_img: Option<TextureId>) -> RenderPass {

@@ -6,11 +6,6 @@ mod event;
 pub mod fs;
 pub mod graphics;
 mod native;
-// Just for tests
-#[cfg(target_os = "android")]
-pub use android_activity::AndroidApp;
-#[cfg(target_os = "android")]
-pub use native::android::init_android_activity;
 
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
@@ -99,25 +94,7 @@ fn native_display() -> &'static Mutex<native::NativeDisplayData> {
 pub mod window {
 	use super::*;
 
-	/// The same as
-	/// ```ignore
-	/// if metal {
-	///    Box::new(MetalContext::new())
-	/// } else {
-	///   Box::new(GlContext::new())
-	/// };
-	/// ```
-	/// but under #[cfg] gate to avoid MetalContext on non-apple platforms
 	pub fn new_rendering_backend() -> Box<dyn RenderingBackend> {
-		#[cfg(target_vendor = "apple")]
-		{
-			if window::apple_gfx_api() == conf::AppleGfxApi::Metal {
-				Box::new(MetalContext::new())
-			} else {
-				Box::new(GlContext::new())
-			}
-		}
-		#[cfg(not(target_vendor = "apple"))]
 		Box::new(GlContext::new())
 	}
 
@@ -243,31 +220,6 @@ pub mod window {
 		let d = native_display().lock().unwrap();
 		d.dropped_files.paths.get(index).cloned()
 	}
-
-	/// Show/hide onscreen keyboard.
-	/// Only works on Android right now.
-	pub fn show_keyboard(show: bool) {
-		let d = native_display().lock().unwrap();
-		d.native_requests.send(native::Request::ShowKeyboard(show)).unwrap();
-	}
-
-	#[cfg(target_vendor = "apple")]
-	pub fn apple_gfx_api() -> crate::conf::AppleGfxApi {
-		let d = native_display().lock().unwrap();
-		d.gfx_api
-	}
-
-	#[cfg(target_vendor = "apple")]
-	pub fn apple_view() -> crate::native::apple::frameworks::ObjcId {
-		let d = native_display().lock().unwrap();
-		d.view
-	}
-
-	#[cfg(target_ios = "ios")]
-	pub fn apple_view_ctrl() -> crate::native::apple::frameworks::ObjcId {
-		let d = native_display().lock().unwrap();
-		d.view_ctrl
-	}
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
@@ -287,9 +239,6 @@ pub enum CursorIcon {
 }
 
 /// Start miniquad_wasm_bindgen.
-///
-/// *Note: on android this function should take the [`AndroidApp`](https://docs.rs/android-activity/latest/android_activity/struct.AndroidApp.html)
-/// handle*
 pub fn start<F>(conf: conf::Conf, f: F)
 where
 	F: 'static + FnOnce() -> Box<dyn EventHandler>,
@@ -318,28 +267,9 @@ where
 		}
 	}
 
-	#[cfg(target_os = "android")]
-	unsafe {
-		native::android::run(conf, f);
-	}
-
 	#[cfg(target_arch = "wasm32")]
-	{
-		native::wasm::run(&conf, f);
-	}
+	native::wasm::run(&conf, f);
 
 	#[cfg(target_os = "windows")]
-	{
-		native::windows::run(&conf, f);
-	}
-
-	#[cfg(target_os = "macos")]
-	unsafe {
-		native::macos::run(conf, f);
-	}
-
-	#[cfg(target_os = "ios")]
-	unsafe {
-		native::ios::run(conf, f);
-	}
+	native::windows::run(&conf, f);
 }

@@ -58,9 +58,7 @@ impl Mandelbrot {
 			images: Vec::new(),
 		};
 
-		// TODO: Handle Apple Metal backend
 		let shader = backend.new_shader(ShaderSource::new(shader::VERTEX, shader::FRAGMENT), shader::meta()).unwrap();
-
 		let pipeline = backend.new_pipeline(&[BufferLayout::default()], &[VertexAttribute::new("pos", VertexFormat::Float2)], shader, PipelineParams::default());
 
 		Mandelbrot {

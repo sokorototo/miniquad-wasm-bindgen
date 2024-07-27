@@ -160,13 +160,7 @@ pub enum TouchPhase {
 
 /// A trait defining event callbacks.
 pub trait EventHandler {
-	/// On most platforms update() and draw() are called each frame, sequentially,
-	/// draw right after update.
-	/// But on Android (and maybe some other platforms in the future) update might
-	/// be called without draw.
-	/// When the app is in background, Android destroys the rendering surface,
-	/// while app is still alive and can do some usefull calculations.
-	/// Note that in this case drawing from update may lead to crashes.
+	// On some platforms update and draw can be called independently to each other
 	fn update(&mut self);
 	fn draw(&mut self);
 	fn resize_event(&mut self, _width: f32, _height: f32) {}
@@ -177,10 +171,9 @@ pub trait EventHandler {
 
 	fn char_event(&mut self, _character: char, _keymods: KeyMods, _repeat: bool) {}
 
-    fn key_down_event(&mut self, _keycode: KeyCode, _keymods: KeyMods, _repeat: bool) {}
+	fn key_down_event(&mut self, _keycode: KeyCode, _keymods: KeyMods, _repeat: bool) {}
 
-
-    fn key_up_event(&mut self, _keycode: KeyCode, _keymods: KeyMods) {}
+	fn key_up_event(&mut self, _keycode: KeyCode, _keymods: KeyMods) {}
 
 	/// Default implementation emulates mouse clicks
 	fn touch_event(&mut self, phase: TouchPhase, _id: u64, x: f32, y: f32) {
@@ -203,15 +196,15 @@ pub trait EventHandler {
 	fn raw_mouse_motion(&mut self, _dx: f32, _dy: f32) {}
 
 	/// Window has been minimized
-	/// Right now is only implemented on Android, X11 and wasm,
-	/// On Andoid window_minimized_event is called on a Pause ndk callback
+	/// Right now is only implemented on X11 and wasm,
 	/// On X11 and wasm it will be called on focus change events.
+	// TODO:  Right now is only implemented on  X11 and wasm,
 	fn window_minimized_event(&mut self) {}
 
 	/// Window has been restored
-	/// Right now is only implemented on Android, X11 and wasm,
-	/// On Andoid window_minimized_event is called on a Pause ndk callback
+	/// Right now is only implemented on X11 and wasm,
 	/// On X11 and wasm it will be called on focus change events.
+	// TODO:  Right now is only implemented on  X11 and wasm,
 	fn window_restored_event(&mut self) {}
 
 	/// This event is sent when the user attempts to exit the application.

@@ -14,7 +14,7 @@ Miniquad aims to provide a graphics abstraction that works the same way on any p
 
 * Windows, OpenGL 3, OpenGL 2.2;
 * Linux, OpenGL 2.2, OpenGL 3, GLES 2, GLES 3;
-* WASM, WebGL 1 - tested on iOS Safari, Firefox, Chrome;
+* WASM, WebGL 2 - tested on Firefox, Chrome;
 
 ## Examples
 
@@ -49,103 +49,7 @@ cargo run --example quad
 
 ## WASM
 
-```bash
-rustup target add wasm32-unknown-unknown
-cargo build --example quad --target wasm32-unknown-unknown
-```
-
-And then use the following .html to load .wasm:
-
-<details><summary>index.html</summary>
-
-```html
-<html lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <title>TITLE</title>
-    <style>
-        html,
-        body,
-        canvas {
-            margin: 0px;
-            padding: 0px;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            position: absolute;
-            background: black;
-            z-index: 0;
-        }
-    </style>
-</head>
-
-<body>
-    <canvas id="glcanvas" tabindex='1'></canvas>
-    <!-- Minified and statically hosted version of https://github.com/not-fl3/miniquad/blob/master/native/sapp-wasm/js/gl.js -->
-    <script src="https://not-fl3.github.io/miniquad-samples/gl.js"></script>
-    <script>load("quad.wasm");</script> <!-- Your compiled wasm file -->
-</body>
-
-</html>
-```
-</details>
-
-One of the ways to server static .wasm and .html:
-
-```
-cargo install basic-http-server
-basic-http-server .
-```
-
-## Android
-
-Recommended way to build for android is using Docker.<br/>
-miniquad uses slightly modifed version of `cargo-apk`
-
-```
-docker run --rm -v $(pwd)":/root/src" -w /root/src notfl3/cargo-apk cargo quad-apk build --example quad
-```
-
-APK file will be in `target/android-artifacts/(debug|release)/apk`
-
-With "log-impl" enabled all log calls will be forwarded to adb console.
-No code modifications for Android required, everything should just works.
-
-## iOS
-
-To run on the simulator:
-
-```
-mkdir MyGame.app
-cargo build --target x86_64-apple-ios --release
-cp target/release/mygame MyGame.app
-# only if the game have any assets
-cp -r assets MyGame.app
-cat > MyGame.app/Info.plist << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-<key>CFBundleExecutable</key>
-<string>mygame</string>
-<key>CFBundleIdentifier</key>
-<string>com.mygame</string>
-<key>CFBundleName</key>
-<string>mygame</string>
-<key>CFBundleVersion</key>
-<string>1</string>
-<key>CFBundleShortVersionString</key>
-<string>1.0</string>
-</dict>
-</plist>
-EOF
-
-xcrun simctl install booted MyGame.app/
-xcrun simctl launch booted com.mygame
-```
-
-For details and instructions on provisioning for real iphone, check [https://macroquad.rs/articles/ios/](https://macroquad.rs/articles/ios/)
+... uses wasm-bindgen, should work out of the box in such a context
 
 ## Cross Compilation
 
@@ -156,27 +60,3 @@ For details and instructions on provisioning for real iphone, check [https://mac
 rustup target add x86_64-pc-windows-gnu
 cargo run --example quad --target x86_64-pc-windows-gnu
 ```
-
-# Goals
-
-* Fast compilation time. Right now it is ~5s from "cargo clean" for both desktop and web.
-
-* Cross platform. Amount of platform specific user code required should be kept as little as possible.
-
-* Low-end devices support.
-
-* Hackability. Working on your own game, highly probable some hardware incompability will be found. Working around that kind of bugs should be easy, implementation details should not be hidden under layers of abstraction.
-
-* Forkability. Each platform implementation is, usually, just one pure Rust file. And this file is very copy-paste friendly - it doesnt use any miniquad specific abstractions. It is very easy to just copy some part of miniquad's platform implementation and use it standalone.
-
-# Non-goals
-
-* Ultimate type safety. Library should be entirely safe in Rust's definition of safe - no UB or memory unsafety. But correct GPU state is not type guaranteed. Feel free to provide safety abstraction in the user code then!
-
-* High-end API, like Vulkan/DirectX 12. Take a look on [gfx-rs](https://github.com/gfx-rs/gfx) or [vulkano](https://github.com/vulkano-rs/vulkano) instead!
-
-# Platinum sponsors
-
-Miniquad is supported by:
-
-[SourceGear](https://www.sourcegear.com/)

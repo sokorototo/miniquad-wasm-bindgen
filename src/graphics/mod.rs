@@ -4,15 +4,7 @@ use std::{error::Error, fmt::Display};
 
 mod gl;
 
-pub use gl::raw_gl;
-
-#[cfg(target_vendor = "apple")]
-mod metal;
-
-pub use gl::GlContext;
-
-#[cfg(target_vendor = "apple")]
-pub use metal::MetalContext;
+pub use gl::{raw_gl, GlContext};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UniformType {
@@ -989,14 +981,7 @@ impl<'a> ShaderSource<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Hash, Eq)]
-pub enum RawId {
-	OpenGl(crate::native::gl::GLuint),
-	#[cfg(target_vendor = "apple")]
-	Metal(*mut objc::runtime::Object),
-}
-
-unsafe impl Send for RawId {}
-unsafe impl Sync for RawId {}
+pub struct RawId(pub crate::native::gl::GLuint);
 
 #[derive(Clone, Debug, Default)]
 pub struct GlslSupport {
@@ -1009,41 +994,19 @@ pub struct GlslSupport {
 
 #[derive(Clone, Debug)]
 pub struct ContextInfo {
-	/// GL_VERSION_STRING from OpenGL. Would be empty on metal.
+	/// GL_VERSION_STRING from OpenGL.
 	pub gl_version_string: String,
 	/// OpenGL provides an enumeration over GL_SHADING_LANGUAGE_VERSION,
 	/// allowing to see which glsl versions are actually supported.
 	/// Unfortunately, it only works on GL4.3+... and even there it is not quite correct.
 	///
 	/// miniquad_wasm_bindgen will take a guess based on GL_VERSION_STRING, current platform and implementation details.
-	/// Would be all false on metal.
 	pub glsl_support: GlslSupport,
 }
 
 pub trait RenderingBackend: Send {
 	fn info(&self) -> ContextInfo;
-	/// For metal context's ShaderSource should contain MSL source string, for GL - glsl.
 	/// If in doubt, _most_ OpenGL contexts support "#version 100" glsl shaders.
-	/// So far miniquad_wasm_bindgen never encountered where it can create a rendering context, but `version 100` shaders are not supported.
-	///
-	/// Typical `new_shader` invocation for an MSL and `glsl version 100` sources:
-	/// ```ignore
-	/// let source = match ctx.info().backend {
-	///    Backend::OpenGl => ShaderSource::Glsl {
-	///        vertex: display_shader::VERTEX,
-	///        fragment: display_shader::FRAGMENT,
-	///    },
-	///    Backend::Metal => ShaderSource::Msl {
-	///        program: display_shader::METAL
-	///    },
-	/// };
-	/// let shader = ctx.new_shader(source, display_shader::meta()).unwrap();
-	/// ```
-	/// Or just
-	/// ```ignore
-	/// let shader = ctx.new_shader(ShaderSource::Glsl {...}, ...);
-	/// ```
-	/// for GL-only.
 	fn new_shader(&mut self, shader: ShaderSource, meta: ShaderMeta) -> Result<ShaderId, ShaderError>;
 	fn new_texture(&mut self, access: TextureAccess, data: TextureSource, params: TextureParams) -> TextureId;
 	fn new_render_texture(&mut self, params: TextureParams) -> TextureId {
@@ -1076,7 +1039,7 @@ pub trait RenderingBackend: Send {
 		(params.width, params.height)
 	}
 
-	/// Get OpenGL's GLuint texture ID or metals ObjcId
+	/// Get OpenGL's GLuint texture ID
 	unsafe fn texture_raw_id(&self, texture: TextureId) -> RawId;
 
 	/// Update whole texture content
@@ -1092,11 +1055,6 @@ pub trait RenderingBackend: Send {
 	fn texture_set_min_filter(&mut self, texture: TextureId, filter: FilterMode, mipmap_filter: MipmapFilterMode);
 	fn texture_set_mag_filter(&mut self, texture: TextureId, filter: FilterMode);
 	fn texture_set_wrap(&mut self, texture: TextureId, wrap_x: TextureWrap, wrap_y: TextureWrap);
-	/// Metal-specific note: if texture was created without `params.generate_mipmaps`
-	/// `generate_mipmaps` will do nothing.
-	///
-	/// Also note that if MipmapFilter is set to None, mipmaps will not be visible, even if
-	/// generated.
 	fn texture_generate_mipmaps(&mut self, texture: TextureId);
 	fn texture_resize(&mut self, texture: TextureId, width: u32, height: u32, bytes: Option<&[u8]>);
 	fn texture_read_pixels(&mut self, texture: TextureId, bytes: &mut [u8]);

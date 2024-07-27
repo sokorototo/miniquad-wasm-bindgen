@@ -5,7 +5,7 @@ pub enum Error {
 	DlSymError,
 }
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(target_os = "linux")]
 pub mod linux {
 	use super::Error;
 
@@ -87,7 +87,7 @@ mod windows {
 	}
 }
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(target_os = "linux")]
 pub use linux::*;
 
 #[cfg(target_os = "windows")]

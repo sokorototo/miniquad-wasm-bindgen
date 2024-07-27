@@ -17,7 +17,6 @@ categories = ["rendering::graphics-api"]
 
 [dependencies]
 glam = { version = "0.28.0", features = ["scalar-math"] }
-quad-rand = "*"
 
 [[bin]]
 name = "web"
@@ -41,16 +40,6 @@ winapi = { version = "0.3", features = [
 	"winbase",
 	"hidusage",
 ], default-features = false }
-
-[target.'cfg(target_os = "android")'.dependencies]
-libc = "0.2"
-ndk = "0.9"
-ndk-sys = "0.6"
-jni = "0.21"
-android-activity = { version = "0.6.0", features = ["native-activity"] }
-
-[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
-objc = "0.2"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1"

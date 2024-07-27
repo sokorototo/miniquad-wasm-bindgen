@@ -1,8 +1,3 @@
-#[cfg(target_os = "android")]
-use crate::native::android;
-#[cfg(target_os = "ios")]
-use crate::native::ios;
-
 /// A file-system loading error.
 ///
 /// On `cfg!(target_arch = "wasm32")` contains a 5th variant `DownloadFailed(String)` containing the response status text.
@@ -12,7 +7,6 @@ pub enum Error {
 	/// XmlHttpRequest failed, returns [`ProgressEvent`](https://developer.mozilla.org/en-US/docs/Web/API/ProgressEvent) and Status Text
 	#[cfg(target_arch = "wasm32")]
 	DownloadFailed(String),
-	AndroidAssetLoadingError,
 	/// MainBundle pathForResource returned null
 	IOSAssetNoSuchFile,
 	/// NSData dataWithContentsOfFile or data.bytes are null
@@ -40,28 +34,8 @@ pub fn load_file<F: FnOnce(Response) + 'static>(path: &str, on_loaded: F) {
 	#[cfg(target_arch = "wasm32")]
 	wasm::load_file(path, on_loaded);
 
-	#[cfg(target_os = "android")]
-	load_file_android(path, on_loaded);
-
-	#[cfg(target_os = "ios")]
-	ios::load_file(path, on_loaded);
-
-	#[cfg(not(any(target_arch = "wasm32", target_os = "android", target_os = "ios")))]
+	#[cfg(not(target_arch = "wasm32"))]
 	load_file_desktop(path, on_loaded);
-}
-
-#[cfg(target_os = "android")]
-fn load_file_android<F: FnOnce(Response)>(path: &str, on_loaded: F) {
-	fn load_file_sync(path: &str) -> Response {
-		let filename = std::ffi::CString::new(path).unwrap();
-		match android::load_asset(&filename) {
-			Some(data) => Ok(data),
-			None => Err(Error::AndroidAssetLoadingError),
-		}
-	}
-
-	let response = load_file_sync(path);
-	on_loaded(response);
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -142,7 +116,7 @@ mod wasm {
 	}
 }
 
-#[cfg(not(any(target_arch = "wasm32", target_os = "android", target_os = "ios")))]
+#[cfg(not(target_arch = "wasm32"))]
 fn load_file_desktop<F: FnOnce(Response)>(path: &str, on_loaded: F) {
 	fn load_file_sync(path: &str) -> Response {
 		use std::fs::File;

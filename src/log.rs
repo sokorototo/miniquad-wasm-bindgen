@@ -178,7 +178,7 @@ macro_rules! __log_line {
 	};
 }
 
-#[cfg(not(any(target_arch = "wasm32", target_os = "android", target_os = "ios")))]
+#[cfg(not(target_arch = "wasm32"))]
 pub fn __private_api_log_lit(message: &str, level: Level, &(_target, _module_path, _file, _line): &(&str, &'static str, &'static str, u32)) {
 	let prefix = match level {
 		Level::Error => "ERROR",
@@ -232,27 +232,6 @@ pub fn __private_api_log_lit(message: &str, level: Level, &(_, _, file, line): &
 			console::error_3(&header, &style, &message);
 		}
 	}
-}
-
-#[cfg(target_os = "android")]
-pub fn __private_api_log_lit(message: &str, level: Level, &(_target, _module_path, _file, _line): &(&str, &'static str, &'static str, u32)) {
-	use std::ffi::CString;
-
-	let log_fn = match level {
-		Level::Debug => crate::native::android::console_debug,
-		Level::Warn => crate::native::android::console_warn,
-		Level::Info => crate::native::android::console_info,
-		Level::Trace => crate::native::android::console_debug,
-		Level::Error => crate::native::android::console_error,
-	};
-	let msg = CString::new(message).unwrap_or_else(|_| panic!());
-
-	unsafe { log_fn(msg.as_ptr()) };
-}
-
-#[cfg(target_os = "ios")]
-pub fn __private_api_log_lit(message: &str, _level: Level, &(_target, _module_path, _file, _line): &(&str, &'static str, &'static str, u32)) {
-	crate::native::ios::log(message);
 }
 
 #[test]

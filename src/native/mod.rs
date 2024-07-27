@@ -18,18 +18,7 @@ pub(crate) struct NativeDisplayData {
 	pub clipboard: Box<dyn Clipboard>,
 	pub dropped_files: DroppedFiles,
 	pub blocking_event_loop: bool,
-
-	#[cfg(target_vendor = "apple")]
-	pub view: crate::native::apple::frameworks::ObjcId,
-	#[cfg(target_os = "ios")]
-	pub view_ctrl: crate::native::apple::frameworks::ObjcId,
-	#[cfg(target_vendor = "apple")]
-	pub gfx_api: crate::conf::AppleGfxApi,
 }
-#[cfg(target_vendor = "apple")]
-unsafe impl Send for NativeDisplayData {}
-#[cfg(target_vendor = "apple")]
-unsafe impl Sync for NativeDisplayData {}
 
 impl NativeDisplayData {
 	pub fn new(screen_width: u32, screen_height: u32, native_requests: mpsc::Sender<Request>, clipboard: Box<dyn Clipboard>) -> NativeDisplayData {
@@ -44,12 +33,6 @@ impl NativeDisplayData {
 			clipboard,
 			dropped_files: Default::default(),
 			blocking_event_loop: false,
-			#[cfg(target_vendor = "apple")]
-			gfx_api: crate::conf::AppleGfxApi::OpenGl,
-			#[cfg(target_vendor = "apple")]
-			view: std::ptr::null_mut(),
-			#[cfg(target_os = "ios")]
-			view_ctrl: std::ptr::null_mut(),
 		}
 	}
 }
@@ -86,28 +69,13 @@ pub mod linux_x11;
 #[cfg(target_os = "linux")]
 pub mod linux_wayland;
 
-#[cfg(target_os = "android")]
-pub mod android;
-
 #[cfg(target_os = "windows")]
 pub mod windows;
-
-#[cfg(target_os = "android")]
-pub use android::*;
 
 #[cfg(target_arch = "wasm32")]
 pub mod wasm;
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
-pub mod apple;
-
-#[cfg(target_os = "macos")]
-pub mod macos;
-
-#[cfg(target_os = "ios")]
-pub mod ios;
-
-#[cfg(any(target_os = "android", target_os = "linux"))]
+#[cfg(target_os = "linux")]
 pub mod egl;
 
 // there is no glGetProcAddr on webgl, so its impossible to make "gl" module work
