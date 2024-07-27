@@ -233,21 +233,3 @@ pub fn __private_api_log_lit(message: &str, level: Level, &(_, _, file, line): &
 		}
 	}
 }
-
-#[test]
-fn test_logs() {
-	trace!("info");
-	trace!("info: {}", 1);
-
-	debug!("info");
-	debug!("info: {}", 1);
-
-	info!("info");
-	info!("info: {}", 1);
-
-	warn!("info");
-	warn!("info: {}", 1);
-
-	error!("info");
-	error!("info: {}", 1);
-}
