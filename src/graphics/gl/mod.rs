@@ -693,19 +693,12 @@ impl RenderingBackend for GlContext {
 			glsl_support.v130 = true;
 		}
 
-		ContextInfo {
-			backend: Backend::OpenGl,
-			gl_version_string,
-			glsl_support,
-		}
+		ContextInfo { gl_version_string, glsl_support }
 	}
-	fn new_shader(&mut self, shader: ShaderSource, meta: ShaderMeta) -> Result<ShaderId, ShaderError> {
-		let (fragment, vertex) = match shader {
-			ShaderSource::Glsl { fragment, vertex } => (fragment, vertex),
-			_ => panic!("Metal source on OpenGl context"),
-		};
-
+	fn new_shader(&mut self, source: ShaderSource, meta: ShaderMeta) -> Result<ShaderId, ShaderError> {
+		let ShaderSource { vertex, fragment } = source;
 		let shader = load_shader_internal(vertex, fragment, meta)?;
+
 		Ok(ShaderId(self.shaders.add(shader)))
 	}
 

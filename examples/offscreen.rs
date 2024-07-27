@@ -93,15 +93,7 @@ impl Stage {
 			images: vec![color_img],
 		};
 
-		let source = match ctx.info().backend {
-			Backend::OpenGl => ShaderSource::Glsl {
-				vertex: display_shader::VERTEX,
-				fragment: display_shader::FRAGMENT,
-			},
-			Backend::Metal => ShaderSource::Msl { program: display_shader::METAL },
-		};
-		let default_shader = ctx.new_shader(source, display_shader::meta()).unwrap();
-
+		let default_shader = ctx.new_shader(ShaderSource::new(display_shader::VERTEX, display_shader::FRAGMENT), display_shader::meta()).unwrap();
 		let display_pipeline = ctx.new_pipeline(
 			&[BufferLayout::default()],
 			&[
@@ -117,15 +109,7 @@ impl Stage {
 			},
 		);
 
-		let source = match ctx.info().backend {
-			Backend::OpenGl => ShaderSource::Glsl {
-				vertex: offscreen_shader::VERTEX,
-				fragment: offscreen_shader::FRAGMENT,
-			},
-			Backend::Metal => ShaderSource::Msl { program: offscreen_shader::METAL },
-		};
-		let offscreen_shader = ctx.new_shader(source, offscreen_shader::meta()).unwrap();
-
+		let offscreen_shader = ctx.new_shader(ShaderSource::new(offscreen_shader::VERTEX, offscreen_shader::FRAGMENT), offscreen_shader::meta()).unwrap();
 		let offscreen_pipeline = ctx.new_pipeline(
 			&[BufferLayout { stride: 36, ..Default::default() }],
 			&[VertexAttribute::new("in_pos", VertexFormat::Float3), VertexAttribute::new("in_color", VertexFormat::Float4)],
@@ -192,11 +176,7 @@ impl EventHandler for Stage {
 }
 
 fn main() {
-	let mut conf = conf::Conf::default();
-	let metal = std::env::args().nth(1).as_deref() == Some("metal");
-	conf.platform.apple_gfx_api = if metal { conf::AppleGfxApi::Metal } else { conf::AppleGfxApi::OpenGl };
-
-	start(conf, move || Box::new(Stage::new()));
+	start(conf::Conf::default(), move || Box::new(Stage::new()));
 }
 
 mod display_shader {
@@ -229,44 +209,6 @@ mod display_shader {
         gl_FragColor = color * texture2D(tex, uv);
     }
     "#;
-
-	pub const METAL: &str = r#"#include <metal_stdlib>
-    using namespace metal;
-
-    struct Uniforms
-    {
-        float4x4 mvp;
-    };
-
-    struct Vertex
-    {
-        float3 in_pos      [[attribute(0)]];
-        float4 in_color    [[attribute(1)]];
-        float2 in_uv       [[attribute(2)]];
-    };
-
-    struct RasterizerData
-    {
-        float4 position [[position]];
-        float4 color [[user(locn0)]];
-        float2 uv [[user(locn1)]];
-    };
-
-    vertex RasterizerData vertexShader(Vertex v [[stage_in]], constant Uniforms& uniforms [[buffer(0)]])
-    {
-        RasterizerData out;
-
-        out.position = uniforms.mvp * float4(v.in_pos, 1.0);
-        out.color = v.in_color;
-        out.uv = v.in_uv;
-
-        return out;
-    }
-
-    fragment float4 fragmentShader(RasterizerData in [[stage_in]], texture2d<float> tex [[texture(0)]], sampler texSmplr [[sampler(0)]])
-    {
-        return in.color * tex.sample(texSmplr, in.uv);
-    }"#;
 
 	pub fn meta() -> ShaderMeta {
 		ShaderMeta {

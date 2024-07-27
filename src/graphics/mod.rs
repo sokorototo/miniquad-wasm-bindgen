@@ -977,9 +977,15 @@ impl<'a> UniformsSource<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ShaderSource<'a> {
-	Glsl { vertex: &'a str, fragment: &'a str },
-	Msl { program: &'a str },
+pub struct ShaderSource<'a> {
+	vertex: &'a str,
+	fragment: &'a str,
+}
+
+impl<'a> ShaderSource<'a> {
+	pub fn new(vertex: &'a str, fragment: &'a str) -> Self {
+		Self { vertex, fragment }
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Hash, Eq)]
@@ -1001,15 +1007,8 @@ pub struct GlslSupport {
 	pub v100: bool,
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum Backend {
-	Metal,
-	OpenGl,
-}
-
 #[derive(Clone, Debug)]
 pub struct ContextInfo {
-	pub backend: Backend,
 	/// GL_VERSION_STRING from OpenGL. Would be empty on metal.
 	pub gl_version_string: String,
 	/// OpenGL provides an enumeration over GL_SHADING_LANGUAGE_VERSION,

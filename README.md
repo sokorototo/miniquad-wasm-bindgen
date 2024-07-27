@@ -8,16 +8,13 @@
 
 Miniquad is a manifestation of a dream in a world where we do not need a deep dependencies tree and thousands lines of code to draw things with a computer.
 
-Miniquad aims to provide a graphics abstraction that works the same way on any platform with a GPU, being as light weight as possible while covering as many machines as possible. 
+Miniquad aims to provide a graphics abstraction that works the same way on any platform with a GPU, being as light weight as possible while covering as many machines as possible.
 
 ## Supported Platforms
 
 * Windows, OpenGL 3, OpenGL 2.2;
 * Linux, OpenGL 2.2, OpenGL 3, GLES 2, GLES 3;
-* macOS, OpenGL 3, Metal;
-* iOS, GLES 2, GLES 3, Metal;
 * WASM, WebGL 1 - tested on iOS Safari, Firefox, Chrome;
-* Android, GLES 2, GLES 3.
 
 ## Examples
 

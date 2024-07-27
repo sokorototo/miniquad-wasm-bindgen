@@ -109,18 +109,7 @@ impl Stage {
 			images: vec![color_img],
 		};
 
-		let default_shader = ctx
-			.new_shader(
-				match ctx.info().backend {
-					Backend::OpenGl => ShaderSource::Glsl {
-						vertex: post_processing_shader::VERTEX,
-						fragment: post_processing_shader::FRAGMENT,
-					},
-					Backend::Metal => unimplemented!(),
-				},
-				post_processing_shader::meta(),
-			)
-			.unwrap();
+		let default_shader = ctx.new_shader(ShaderSource::new(shader::VERTEX, shader::FRAGMENT), post_processing_shader::meta()).unwrap();
 
 		let post_processing_pipeline = ctx.new_pipeline(
 			&[BufferLayout::default()],

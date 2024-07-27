@@ -59,15 +59,7 @@ impl Mandelbrot {
 		};
 
 		// TODO: Handle Apple Metal backend
-		let shader = backend
-			.new_shader(
-				ShaderSource::Glsl {
-					vertex: SHADER_VERTEX,
-					fragment: SHADER_FRAGMENT,
-				},
-				meta(),
-			)
-			.unwrap();
+		let shader = backend.new_shader(ShaderSource::new(shader::VERTEX, shader::FRAGMENT), shader::meta()).unwrap();
 
 		let pipeline = backend.new_pipeline(&[BufferLayout::default()], &[VertexAttribute::new("pos", VertexFormat::Float2)], shader, PipelineParams::default());
 
@@ -86,7 +78,6 @@ impl Mandelbrot {
 			let (w, h) = window::screen_size();
 			(w as f32, h as f32)
 		};
-		
 
 		(4.0 * (x / screen_size.0 - 0.5).powi(3), 4.0 * (y / screen_size.1 - 0.5).powi(3))
 	}
@@ -204,7 +195,10 @@ fn main() {
 	miniquad_wasm_bindgen::start(Conf { high_dpi: true, ..Default::default() }, || Box::new(Mandelbrot::new()));
 }
 
-const SHADER_VERTEX: &str = r#"#version 100
+mod shader {
+	use miniquad_wasm_bindgen::*;
+
+	pub const VERTEX: &str = r#"#version 100
 
 uniform highp mat4 transform;
 
@@ -216,7 +210,7 @@ void main() {
     texcoord = vec2(pos.x/2.0 + 0.5, 1.0 - (pos.y/2.0 + 0.5));
 }"#;
 
-const SHADER_FRAGMENT: &str = r#"#version 100
+	pub const FRAGMENT: &str = r#"#version 100
 
 precision highp float;
 
@@ -260,11 +254,12 @@ void main() {
     gl_FragColor = vec4(r, intensity, intensity, 1.0);
 }"#;
 
-fn meta() -> ShaderMeta {
-	ShaderMeta {
-		images: vec![],
-		uniforms: UniformBlockLayout {
-			uniforms: vec![UniformDesc::new("transform", UniformType::Mat4)],
-		},
+	pub fn meta() -> ShaderMeta {
+		ShaderMeta {
+			images: vec![],
+			uniforms: UniformBlockLayout {
+				uniforms: vec![UniformDesc::new("transform", UniformType::Mat4)],
+			},
+		}
 	}
 }

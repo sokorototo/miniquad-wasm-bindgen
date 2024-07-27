@@ -45,18 +45,7 @@ impl Stage {
 			images: vec![],
 		};
 
-		let shader = ctx
-			.new_shader(
-				match ctx.info().backend {
-					Backend::OpenGl => ShaderSource::Glsl {
-						vertex: shader::VERTEX,
-						fragment: shader::FRAGMENT,
-					},
-					Backend::Metal => ShaderSource::Msl { program: shader::METAL },
-				},
-				shader::meta(),
-			)
-			.unwrap();
+		let shader = ctx.new_shader(ShaderSource::new(shader::VERTEX, shader::FRAGMENT), shader::meta()).unwrap();
 
 		let pipeline = ctx.new_pipeline(
 			&[BufferLayout::default()],
@@ -151,8 +140,6 @@ fn rand(from: f32, to: f32) -> f32 {
 
 fn main() {
 	let mut conf = conf::Conf::default();
-	let metal = std::env::args().nth(1).as_deref() == Some("metal");
-	conf.platform.apple_gfx_api = if metal { conf::AppleGfxApi::Metal } else { conf::AppleGfxApi::OpenGl };
 	conf.platform.linux_backend = LinuxBackend::WaylandWithX11Fallback;
 
 	miniquad_wasm_bindgen::start(conf, move || Box::new(Stage::new()));

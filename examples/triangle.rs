@@ -33,18 +33,7 @@ impl Stage {
 			images: vec![],
 		};
 
-		let shader = backend
-			.new_shader(
-				match backend.info().backend {
-					Backend::OpenGl => ShaderSource::Glsl {
-						vertex: shader::VERTEX,
-						fragment: shader::FRAGMENT,
-					},
-					Backend::Metal => ShaderSource::Msl { program: shader::METAL },
-				},
-				shader::meta(),
-			)
-			.unwrap();
+		let shader = backend.new_shader(ShaderSource::new(shader::VERTEX, shader::FRAGMENT), shader::meta()).unwrap();
 
 		let pipeline = backend.new_pipeline(
 			&[BufferLayout::default()],
@@ -74,9 +63,6 @@ impl EventHandler for Stage {
 
 fn main() {
 	let mut conf = conf::Conf::default();
-	let metal = std::env::args().nth(1).as_deref() == Some("metal");
-	conf.platform.apple_gfx_api = if metal { conf::AppleGfxApi::Metal } else { conf::AppleGfxApi::OpenGl };
-
 	miniquad_wasm_bindgen::start(conf, move || Box::new(Stage::new()));
 }
 

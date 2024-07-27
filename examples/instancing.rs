@@ -50,18 +50,7 @@ impl Stage {
 			images: vec![],
 		};
 
-		let shader = ctx
-			.new_shader(
-				match ctx.info().backend {
-					Backend::OpenGl => ShaderSource::Glsl {
-						vertex: shader::VERTEX,
-						fragment: shader::FRAGMENT,
-					},
-					Backend::Metal => ShaderSource::Msl { program: shader::METAL },
-				},
-				shader::meta(),
-			)
-			.unwrap();
+		let shader = ctx.new_shader(ShaderSource::new(shader::VERTEX, shader::FRAGMENT), shader::meta()).unwrap();
 
 		let pipeline = ctx.new_pipeline(
 			&[
