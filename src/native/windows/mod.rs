@@ -130,9 +130,9 @@ impl WindowsDisplay {
 		let win_style: DWORD = get_win_style(self.fullscreen, self.window_resizable);
 
 		unsafe {
-			#[cfg(target_arch = "x86_64")]
+			#[cfg(target_pointer_width = "64")]
 			SetWindowLongPtrA(self.wnd, GWL_STYLE, win_style as _);
-			#[cfg(target_arch = "i686")]
+			#[cfg(target_pointer_width = "32")]
 			SetWindowLong(self.wnd, GWL_STYLE, win_style as _);
 
 			if self.fullscreen {
@@ -212,12 +212,12 @@ unsafe fn key_mods() -> KeyMods {
 unsafe extern "system" fn win32_wndproc(hwnd: HWND, umsg: UINT, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
 	let display_ptr: isize;
 
-	#[cfg(target_arch = "x86_64")]
+	#[cfg(target_pointer_width = "64")]
 	{
 		display_ptr = GetWindowLongPtrA(hwnd, GWLP_USERDATA)
 	}
 
-	#[cfg(target_arch = "i686")]
+	#[cfg(target_pointer_width = "32")]
 	{
 		display_ptr = GetWindowLong(hwnd, GWLP_USERDATA)
 	}
@@ -784,9 +784,9 @@ where
 
 		display.event_handler = Some(f());
 
-		#[cfg(target_arch = "x86_64")]
+		#[cfg(target_pointer_width = "64")]
 		SetWindowLongPtrA(wnd, GWLP_USERDATA, &mut display as *mut _ as isize);
-		#[cfg(target_arch = "i686")]
+		#[cfg(target_pointer_width = "32")]
 		SetWindowLong(wnd, GWLP_USERDATA, &mut display as *mut _ as isize);
 
 		let mut done = false;
