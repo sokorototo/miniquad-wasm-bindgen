@@ -1123,7 +1123,12 @@ impl RenderingBackend for GlContext {
 					self.cache.bind_buffer(GL_ARRAY_BUFFER, vb.gl_buf, vb.index_type);
 
 					unsafe {
-						glVertexAttribPointer(attr_index as GLuint, attribute.size, attribute.type_, GL_FALSE as u8, attribute.stride, attribute.offset as *mut _);
+						match attribute.type_ {
+							GL_INT | GL_UNSIGNED_INT | GL_SHORT | GL_UNSIGNED_SHORT | GL_UNSIGNED_BYTE | GL_BYTE => {
+								glVertexAttribIPointer(attr_index as GLuint, attribute.size, attribute.type_, attribute.stride, attribute.offset as *mut _)
+							}
+							_ => glVertexAttribPointer(attr_index as GLuint, attribute.size, attribute.type_, GL_FALSE as u8, attribute.stride, attribute.offset as *mut _),
+						};
 						glVertexAttribDivisor(attr_index as GLuint, attribute.divisor as u32);
 						glEnableVertexAttribArray(attr_index as GLuint);
 					};

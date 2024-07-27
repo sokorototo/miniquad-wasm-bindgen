@@ -62,8 +62,7 @@ impl EventHandler for Stage {
 }
 
 fn main() {
-	let mut conf = conf::Conf::default();
-	miniquad_wasm_bindgen::start(conf, move || Box::new(Stage::new()));
+	miniquad_wasm_bindgen::start(conf::Conf::default(), move || Box::new(Stage::new()));
 }
 
 mod shader {

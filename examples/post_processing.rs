@@ -109,7 +109,9 @@ impl Stage {
 			images: vec![color_img],
 		};
 
-		let default_shader = ctx.new_shader(ShaderSource::new(shader::VERTEX, shader::FRAGMENT), post_processing_shader::meta()).unwrap();
+		let default_shader = ctx
+			.new_shader(ShaderSource::new(post_processing_shader::VERTEX, post_processing_shader::FRAGMENT), post_processing_shader::meta())
+			.unwrap();
 
 		let post_processing_pipeline = ctx.new_pipeline(
 			&[BufferLayout::default()],
@@ -118,15 +120,7 @@ impl Stage {
 			PipelineParams::default(),
 		);
 
-		let offscreen_shader = ctx
-			.new_shader(
-				ShaderSource::Glsl {
-					vertex: offscreen_shader::VERTEX,
-					fragment: offscreen_shader::FRAGMENT,
-				},
-				offscreen_shader::meta(),
-			)
-			.unwrap();
+		let offscreen_shader = ctx.new_shader(ShaderSource::new(offscreen_shader::VERTEX, offscreen_shader::FRAGMENT), offscreen_shader::meta()).unwrap();
 
 		let offscreen_pipeline = ctx.new_pipeline(
 			&[BufferLayout { stride: 36, ..Default::default() }],

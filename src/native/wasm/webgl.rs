@@ -36,6 +36,8 @@ pub type GLclampf = f32;
 pub type GLdouble = f64;
 pub type GLclampd = f64;
 
+// TODO: Use exports from WebGl2RenderingContext
+
 pub const GL_INT_2_10_10_10_REV: u32 = 0x8D9F;
 pub const GL_PROGRAM_POINT_SIZE: u32 = 0x8642;
 pub const GL_STENCIL_ATTACHMENT: u32 = 0x8D20;
@@ -99,7 +101,6 @@ pub const GL_DECR: u32 = 0x1E03;
 pub const GL_FRAGMENT_SHADER: u32 = 0x8B30;
 pub const GL_FLOAT: u32 = 0x1406;
 pub const GL_TEXTURE_MAX_LOD: u32 = 0x813B;
-// TODO: Use exports from WebGl2RenderingContext
 pub const GL_DEPTH_COMPONENT: u32 = WebGl2RenderingContext::DEPTH_COMPONENT;
 pub const GL_ONE_MINUS_DST_ALPHA: u32 = 0x0305;
 pub const GL_COLOR: u32 = 0x1800;
@@ -868,6 +869,11 @@ pub unsafe fn glUseProgram(program_idx: GLuint) {
 // =============== INSTANCED RENDERING =================
 
 #[inline(always)]
+pub fn glVertexAttribIPointer(index: GLuint, size: GLint, type_: GLenum, stride: GLsizei, pointer: *const ::std::os::raw::c_void) {
+	get_gl().vertex_attrib_i_pointer_with_i32(index, size, type_, stride, pointer as _)
+}
+
+#[inline(always)]
 pub fn glVertexAttribPointer(index: GLuint, size: GLint, type_: GLenum, normalized: GLboolean, stride: GLsizei, pointer: *const ::std::os::raw::c_void) {
 	get_gl().vertex_attrib_pointer_with_i32(index, size, type_, normalized != 0, stride, pointer as _);
 }
@@ -1103,6 +1109,7 @@ pub fn glStencilOpSeparate(face: GLenum, sfail: GLenum, dpfail: GLenum, dppass: 
 }
 
 // ============= GPU QUERIES ================
+// TODO: expand
 static mut QUERIES: BTreeMap<u32, WebGlQuery> = BTreeMap::new();
 
 pub unsafe fn glGenQueries(n: GLsizei, ids: *mut GLuint) {
@@ -1368,7 +1375,6 @@ pub fn glFlush() {
 // 	pub fn glBindBufferBase(target: GLenum, index: GLuint, buffer: GLuint);
 // 	pub fn glTransformFeedbackVaryings(program: GLuint, count: GLsizei, varyings: *const *const GLchar, bufferMode: GLenum);
 // 	pub fn glGetTransformFeedbackVarying(program: GLuint, index: GLuint, bufSize: GLsizei, length: *mut GLsizei, size: *mut GLsizei, type_: *mut GLenum, name: *mut GLchar);
-// 	pub fn glVertexAttribIPointer(index: GLuint, size: GLint, type_: GLenum, stride: GLsizei, pointer: *const ::std::os::raw::c_void);
 // 	pub fn glGetVertexAttribIiv(index: GLuint, pname: GLenum, params: *mut GLint);
 // 	pub fn glGetVertexAttribIuiv(index: GLuint, pname: GLenum, params: *mut GLuint);
 // 	pub fn glVertexAttribI4i(index: GLuint, x: GLint, y: GLint, z: GLint, w: GLint);

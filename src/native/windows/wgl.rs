@@ -154,8 +154,8 @@ pub unsafe fn gl_choose_fbconfig(desired: &mut GlFbconfig, alternatives: &[GlFbc
 			if missing < least_missing {
 				closest = Some(i);
 			} else if missing == least_missing && (color_diff < least_color_diff || color_diff == least_color_diff && extra_diff < least_extra_diff) {
-   					closest = Some(i);
-   				}
+				closest = Some(i);
+			}
 
 			// Figure out if the current one is better than the best one found so far
 			//  Least number of missing buffers is the most important heuristic,

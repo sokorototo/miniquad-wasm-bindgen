@@ -17,10 +17,11 @@ categories = ["rendering::graphics-api"]
 
 [dependencies]
 glam = { version = "0.28.0", features = ["scalar-math"] }
+quad-rand = "*"
 
 [[bin]]
 name = "web"
-path = "examples/mandelbrot.rs"
+path = "examples/colourf4b.rs"
 
 [features]
 log-impl = []

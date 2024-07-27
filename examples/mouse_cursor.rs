@@ -14,11 +14,13 @@ impl EventHandler for Stage {
 		}
 	}
 
-	fn raw_mouse_motion(&mut self, dx: f32, dy: f32) {
-		info!("Mouse moved by: {} {}", dx, dy);
+	fn raw_mouse_motion(&mut self, _dx: f32, _dy: f32) {
+		#[cfg(feature = "log-impl")]
+		info!("Mouse moved by: {} {}", _dx, _dy);
 	}
 
 	fn mouse_motion_event(&mut self, _x: f32, _y: f32) {
+		#[cfg(feature = "log-impl")]
 		info!("Raw Mouse moved to: {} {}", _x, _y);
 	}
 

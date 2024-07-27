@@ -79,9 +79,9 @@ impl GlCache {
 				self.stored_vertex_buffer = 0;
 			}
 		} else if self.stored_index_buffer != 0 {
-  				self.bind_buffer(target, self.stored_index_buffer, self.stored_index_type);
-  				self.stored_index_buffer = 0;
-  			}
+			self.bind_buffer(target, self.stored_index_buffer, self.stored_index_type);
+			self.stored_index_buffer = 0;
+		}
 	}
 
 	pub fn bind_texture(&mut self, slot_index: usize, target: GLuint, texture: GLuint) {
