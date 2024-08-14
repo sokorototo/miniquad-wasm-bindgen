@@ -16,13 +16,13 @@ impl EventHandler for Stage {
 
 	fn raw_mouse_motion(&mut self, _dx: f32, _dy: f32) {
 		#[cfg(feature = "log-impl")]
-		info!("Mouse moved by: {} {}", _dx, _dy);
+		info!("Raw Mouse moved by: {} {}", _dx, _dy);
 	}
 
-	fn mouse_motion_event(&mut self, _x: f32, _y: f32) {
-		#[cfg(feature = "log-impl")]
-		info!("Raw Mouse moved to: {} {}", _x, _y);
-	}
+	// fn mouse_motion_event(&mut self, _x: f32, _y: f32) {
+	// 	#[cfg(feature = "log-impl")]
+	// 	info!("Mouse moved to: {} {}", _x, _y);
+	// }
 
 	fn mouse_button_down_event(&mut self, button: MouseButton, _: f32, _: f32) {
 		static CURSORS: [CursorIcon; 12] = [
@@ -42,14 +42,6 @@ impl EventHandler for Stage {
 
 		// test extra buttons
 		match button {
-			MouseButton::Other(4) => {
-				self.0 = (self.0 + 1) % CURSORS.len();
-				window::set_mouse_cursor(CURSORS[self.0]);
-			}
-			MouseButton::Other(5) => {
-				self.0 = (self.0 + CURSORS.len() - 1) % CURSORS.len();
-				window::set_mouse_cursor(CURSORS[self.0]);
-			}
 			MouseButton::Left => {
 				self.0 = (self.0 + CURSORS.len() - 1) % CURSORS.len();
 				window::set_mouse_cursor(CURSORS[self.0]);
@@ -58,7 +50,10 @@ impl EventHandler for Stage {
 				self.0 = (self.0 + 1) % CURSORS.len();
 				window::set_mouse_cursor(CURSORS[self.0]);
 			}
-			_ => {}
+			b => {
+				#[cfg(feature = "log-impl")]
+				info!("Got Mouse Input: {:?}", b)
+			}
 		}
 	}
 }

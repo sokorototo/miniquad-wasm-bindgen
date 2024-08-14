@@ -10,7 +10,7 @@ use winapi::{
 		hidusage::{HID_USAGE_GENERIC_MOUSE, HID_USAGE_PAGE_GENERIC},
 		minwindef::{DWORD, HIWORD, LOWORD, LPARAM, LRESULT, UINT, WPARAM},
 		ntdef::NULL,
-		windef::{HCURSOR, HDC, HICON, HWND, POINT, RECT},
+		windef::{HBRUSH, HCURSOR, HDC, HICON, HWND, POINT, RECT},
 		windowsx::{GET_X_LPARAM, GET_Y_LPARAM},
 	},
 	um::{
@@ -27,6 +27,9 @@ mod libopengl32;
 mod wgl;
 
 use libopengl32::LibOpengl32;
+
+// "SIDEQUAD_APP\0"
+const CLASS_NAME: &'static [u16] = &[83, 73, 68, 69, 81, 85, 65, 68, 95, 65, 80, 80, 0];
 
 pub(crate) struct WindowsDisplay {
 	fullscreen: bool,
@@ -293,12 +296,16 @@ unsafe extern "system" fn win32_wndproc(hwnd: HWND, umsg: UINT, wparam: WPARAM, 
 			event_handler.mouse_button_down_event(MouseButton::Middle, mouse_x, mouse_y);
 		}
 		WM_XBUTTONDOWN => {
-			let mouse_x = payload.mouse_x;
-			let mouse_y = payload.mouse_y;
-
 			match HIWORD(wparam as _) {
-				XBUTTON1 => event_handler.mouse_button_down_event(MouseButton::Other(4), mouse_x, mouse_y),
-				XBUTTON2 => event_handler.mouse_button_down_event(MouseButton::Other(5), mouse_x, mouse_y),
+				XBUTTON1 => event_handler.mouse_button_down_event(MouseButton::Other(4), payload.mouse_x, payload.mouse_y),
+				XBUTTON2 => event_handler.mouse_button_down_event(MouseButton::Other(5), payload.mouse_x, payload.mouse_y),
+				_ => {}
+			};
+		}
+		WM_XBUTTONUP => {
+			match HIWORD(wparam as _) {
+				XBUTTON1 => event_handler.mouse_button_up_event(MouseButton::Other(4), payload.mouse_x, payload.mouse_y),
+				XBUTTON2 => event_handler.mouse_button_up_event(MouseButton::Other(5), payload.mouse_x, payload.mouse_y),
 				_ => {}
 			};
 		}
@@ -319,16 +326,6 @@ unsafe extern "system" fn win32_wndproc(hwnd: HWND, umsg: UINT, wparam: WPARAM, 
 			let mouse_y = payload.mouse_y;
 
 			event_handler.mouse_button_up_event(MouseButton::Middle, mouse_x, mouse_y);
-		}
-		WM_XBUTTONUP => {
-			let mouse_x = payload.mouse_x;
-			let mouse_y = payload.mouse_y;
-
-			match HIWORD(wparam as _) {
-				XBUTTON1 => event_handler.mouse_button_up_event(MouseButton::Other(4), mouse_x, mouse_y),
-				XBUTTON2 => event_handler.mouse_button_up_event(MouseButton::Other(5), mouse_x, mouse_y),
-				_ => {}
-			};
 		}
 
 		WM_MOUSEMOVE => {
@@ -377,11 +374,14 @@ unsafe extern "system" fn win32_wndproc(hwnd: HWND, umsg: UINT, wparam: WPARAM, 
 				dy = dy / 65535.0 * height;
 			}
 
-			event_handler.raw_mouse_motion(dx as f32, dy as f32);
+			// don't send zero inputs, eg on mouse click
+			if dx.abs() >= f32::EPSILON || dy.abs() >= f32::EPSILON {
+				event_handler.raw_mouse_motion(dx as f32, dy as f32);
+			}
 		}
 
 		WM_MOUSELEAVE => {
-			// mouse leave was not handled by miniquad_wasm_bindgen anyway
+			// mouse leave was not handled by sidequad anyway
 			// _sapp.win32_mouse_tracked = false;
 			// _sapp_win32_mouse_event(
 			//     sapp_event_type_SAPP_EVENTTYPE_MOUSE_LEAVE,
@@ -529,8 +529,8 @@ unsafe fn create_window(window_title: &str, fullscreen: bool, resizable: bool, w
 	wndclassw.hInstance = GetModuleHandleW(NULL as _);
 	wndclassw.hCursor = LoadCursorW(NULL as _, IDC_ARROW);
 	wndclassw.hIcon = LoadIconW(NULL as _, IDI_WINLOGO);
-	let class_name = "MINIQUADAPP\0".encode_utf16().collect::<Vec<u16>>();
-	wndclassw.lpszClassName = class_name.as_ptr() as _;
+	wndclassw.hbrBackground = GetStockObject(BLACK_BRUSH as i32) as HBRUSH;
+	wndclassw.lpszClassName = CLASS_NAME.as_ptr();
 	wndclassw.cbWndExtra = std::mem::size_of::<*mut std::ffi::c_void>() as i32;
 	RegisterClassW(&wndclassw);
 
@@ -556,12 +556,11 @@ unsafe fn create_window(window_title: &str, fullscreen: bool, resizable: bool, w
 	AdjustWindowRectEx(&rect as *const _ as _, win_style, false as _, win_ex_style);
 	let win_width = rect.right - rect.left;
 	let win_height = rect.bottom - rect.top;
-	let class_name = "MINIQUADAPP\0".encode_utf16().collect::<Vec<u16>>();
 	let mut window_name = window_title.encode_utf16().collect::<Vec<u16>>();
 	window_name.push(0);
 	let hwnd = CreateWindowExW(
 		win_ex_style,                // dwExStyle
-		class_name.as_ptr(),         // lpClassName
+		CLASS_NAME.as_ptr(),         // lpClassName
 		window_name.as_ptr(),        // lpWindowName
 		win_style,                   // dwStyle
 		CW_USEDEFAULT,               // X
@@ -594,12 +593,13 @@ unsafe fn create_window(window_title: &str, fullscreen: bool, resizable: bool, w
 }
 
 unsafe fn create_msg_window() -> (HWND, HDC) {
-	let class_name = "MINIQUADAPP\0".encode_utf16().collect::<Vec<u16>>();
-	let window_name = "miniquad_wasm_bindgen message window\0".encode_utf16().collect::<Vec<u16>>();
+	// "sidequad message window\0"
+	let window_name = [115, 105, 100, 101, 113, 117, 97, 100, 32, 109, 101, 115, 115, 97, 103, 101, 32, 119, 105, 110, 100, 111, 119, 0];
+
 	let msg_hwnd = CreateWindowExW(
 		WS_EX_OVERLAPPEDWINDOW,
-		class_name.as_ptr() as _,
-		window_name.as_ptr() as _,
+		CLASS_NAME.as_ptr(),
+		window_name.as_ptr(),
 		WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
 		0,
 		0,

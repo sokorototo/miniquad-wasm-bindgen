@@ -21,7 +21,7 @@ quad-rand = "*"
 
 [[bin]]
 name = "web"
-path = "examples/colourf4b.rs"
+path = "examples/mouse_cursor.rs"
 
 [features]
 log-impl = []
