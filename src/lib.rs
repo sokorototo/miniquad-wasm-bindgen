@@ -205,21 +205,6 @@ pub mod window {
 		let mut d = native_display().lock().unwrap();
 		d.clipboard.set(data)
 	}
-
-	pub fn dropped_file_count() -> usize {
-		let d = native_display().lock().unwrap();
-		d.dropped_files.bytes.len()
-	}
-
-	pub fn dropped_file_bytes(index: usize) -> Option<Vec<u8>> {
-		let d = native_display().lock().unwrap();
-		d.dropped_files.bytes.get(index).cloned()
-	}
-
-	pub fn dropped_file_path(index: usize) -> Option<std::path::PathBuf> {
-		let d = native_display().lock().unwrap();
-		d.dropped_files.paths.get(index).cloned()
-	}
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 pub enum MouseButton {
 	Left,
@@ -215,10 +217,7 @@ pub trait EventHandler {
 		true
 	}
 
-	/// A file has been dropped over the application.
-	/// Applications can request the number of dropped files with
-	/// `ctx.dropped_file_count()`, path of an individual file with
-	/// `ctx.dropped_file_path()`, and for wasm targets the file bytes
-	/// can be requested with `ctx.dropped_file_bytes()`.
-	fn files_dropped_event(&mut self) {}
+	/// A file has been dropped into the application.
+	/// `_bytes` is provided on the Web, use the filesystem on Desktop
+	fn files_dropped_event(&mut self, _paths: Vec<PathBuf>, _bytes: Option<Vec<Vec<u8>>>) {}
 }

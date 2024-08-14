@@ -26,6 +26,13 @@ impl EventHandler for State {
 			window::schedule_update();
 		}
 	}
+
+	fn files_dropped_event(&mut self, paths: Vec<std::path::PathBuf>, _: Option<Vec<Vec<u8>>>) {
+		#[cfg(feature = "log-impl")]
+		for path in paths {
+			info!("File Dropped into App: {:?}", path)
+		}
+	}
 }
 
 fn main() {

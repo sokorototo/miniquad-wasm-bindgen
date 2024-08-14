@@ -21,7 +21,7 @@ quad-rand = "*"
 
 [[bin]]
 name = "web"
-path = "examples/mouse_cursor.rs"
+path = "examples/lazy_update.rs"
 
 [features]
 log-impl = []
@@ -33,6 +33,7 @@ libc = "0.2"
 winapi = { version = "0.3", features = [
 	"wingdi",
 	"winuser",
+	"shellapi",
 	"libloaderapi",
 	"windef",
 	"shellscalingapi",

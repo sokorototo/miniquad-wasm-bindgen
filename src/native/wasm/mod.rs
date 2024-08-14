@@ -555,15 +555,8 @@ fn init_file_drop_events(canvas: &HtmlCanvasElement) {
 						bytes.push(js_sys::Uint8Array::new(&d).to_vec());
 					}
 
-					{
-						// update
-						let mut d = crate::native_display().lock().unwrap();
-						d.dropped_files.paths = paths;
-						d.dropped_files.bytes = bytes;
-					}
-
-					// notify
-					event_handler.files_dropped_event();
+					// emit event
+					event_handler.files_dropped_event(paths, Some(bytes));
 				});
 			}
 		}

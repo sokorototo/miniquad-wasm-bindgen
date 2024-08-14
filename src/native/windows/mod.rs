@@ -1,3 +1,5 @@
+use std::{ffi::OsString, path::PathBuf};
+
 use crate::{
 	conf::{Conf, Icon},
 	event::{KeyMods, MouseButton},
@@ -15,6 +17,7 @@ use winapi::{
 	},
 	um::{
 		libloaderapi::{GetModuleHandleW, GetProcAddress},
+		shellapi::{DragAcceptFiles, DragFinish, DragQueryFileW, HDROP},
 		shellscalingapi::*,
 		wingdi::*,
 		winuser::*,
@@ -429,6 +432,23 @@ unsafe extern "system" fn win32_wndproc(hwnd: HWND, umsg: UINT, wparam: WPARAM, 
 				payload.event_handler.as_mut().unwrap().resize_event(width, height);
 			}
 		}
+		WM_DROPFILES => {
+			let h_drop = wparam as HDROP;
+			let file_count = DragQueryFileW(h_drop, 0xFFFFFFFF, std::ptr::null_mut(), 0);
+
+			// read data
+			let mut file_path: [u16; 320] = [0; 320];
+			let paths = (0..file_count)
+				.map(|i| {
+					let len = DragQueryFileW(h_drop, i, file_path.as_mut_ptr(), file_path.len() as u32) as usize;
+					let os_string = <OsString as std::os::windows::ffi::OsStringExt>::from_wide(&file_path[..len]);
+					PathBuf::from(os_string)
+				})
+				.collect::<Vec<_>>();
+
+			event_handler.files_dropped_event(paths, None);
+			DragFinish(h_drop);
+		}
 		_ => {}
 	}
 
@@ -763,6 +783,9 @@ where
 			blocking_event_loop: conf.platform.blocking_event_loop,
 			..NativeDisplayData::new(conf.window_width, conf.window_height, tx, clipboard)
 		});
+
+		// enable drag and drop
+		DragAcceptFiles(wnd, true as _);
 
 		display.update_dimensions(wnd);
 
