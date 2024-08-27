@@ -349,6 +349,7 @@ pub struct TextureParams {
 	// And reallocate non-mipmapped texture(on metal) on generateMipmaps call
 	// But! Reallocating cubemaps is too much struggle, so leave it for later.
 	pub allocate_mipmaps: bool,
+	pub sample_count: i32,
 }
 
 impl Default for TextureParams {
@@ -363,6 +364,7 @@ impl Default for TextureParams {
 			width: 0,
 			height: 0,
 			allocate_mipmaps: false,
+			sample_count: 0,
 		}
 	}
 }
@@ -1024,6 +1026,7 @@ pub trait RenderingBackend: Send {
 				kind: TextureKind::Texture2D,
 				width: width as _,
 				height: height as _,
+				sample_count: 0,
 				format: TextureFormat::RGBA8,
 				wrap: TextureWrap::Clamp,
 				min_filter: FilterMode::Linear,
@@ -1060,10 +1063,10 @@ pub trait RenderingBackend: Send {
 	fn texture_read_pixels(&mut self, texture: TextureId, bytes: &mut [u8]);
 	fn texture_update_part(&mut self, texture: TextureId, x_offset: i32, y_offset: i32, width: i32, height: i32, bytes: &[u8]);
 	fn new_render_pass(&mut self, color_img: TextureId, depth_img: Option<TextureId>) -> RenderPass {
-		self.new_render_pass_mrt(&[color_img], depth_img)
+		self.new_render_pass_mrt(&[color_img], &[], depth_img)
 	}
 	/// Same as "new_render_pass", but allows multiple color attachments.
-	fn new_render_pass_mrt(&mut self, color_img: &[TextureId], depth_img: Option<TextureId>) -> RenderPass;
+	fn new_render_pass_mrt(&mut self, color_img: &[TextureId], resolve_img: &[TextureId], depth_img: Option<TextureId>) -> RenderPass;
 	/// panics for depth-only or multiple color attachment render pass
 	/// This function is, mostly, legacy. Using "render_pass_color_attachments"
 	/// is recommended instead.

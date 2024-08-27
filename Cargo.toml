@@ -21,7 +21,7 @@ quad-rand = "*"
 
 [[bin]]
 name = "web"
-path = "examples/lazy_update.rs"
+path = "examples/msaa_render_texture.rs"
 
 [features]
 log-impl = []

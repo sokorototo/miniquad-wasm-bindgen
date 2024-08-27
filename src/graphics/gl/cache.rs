@@ -38,6 +38,7 @@ pub struct GlCache {
 	pub color_blend: Option<BlendState>,
 	pub alpha_blend: Option<BlendState>,
 	pub stencil: Option<StencilState>,
+	pub cur_pass: Option<RenderPass>,
 	pub color_write: ColorMask,
 	pub cull_face: CullFace,
 	pub attributes: [Option<CachedAttribute>; MAX_VERTEX_ATTRIBUTES],

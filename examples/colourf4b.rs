@@ -72,15 +72,18 @@ mod shader {
     in vec2 in_pos;
     in lowp uvec4 in_color;
     out lowp vec4 color;
-    void main() {
+
+	 void main() {
         gl_Position = vec4(in_pos, 0, 1);
         color = vec4(in_color) / 255.0;
     }"#;
 
 	pub const FRAGMENT: &str = r#"#version 300 es
     in lowp vec4 color;
+	 out lowp vec4 FragColor;
+
     void main() {
-        gl_FragColor = color;
+        FragColor = color;
     }"#;
 
 	pub fn meta() -> ShaderMeta {

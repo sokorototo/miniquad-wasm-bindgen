@@ -3,22 +3,16 @@ use miniquad_wasm_bindgen::*;
 #[derive(Debug, Default)]
 struct State {
 	updates: u128,
-	draws: u128,
 }
 
 impl EventHandler for State {
 	fn update(&mut self) {
 		self.updates += 1;
-
-		#[cfg(feature = "log-impl")]
-		info!("Update Cycles: {:?}", self.updates)
 	}
 
 	fn draw(&mut self) {
-		self.draws += 1;
-
 		#[cfg(feature = "log-impl")]
-		info!("Draw Cycles: {:?}", self.draws)
+		info!("Update Cycles: {:?}", self.updates)
 	}
 
 	fn mouse_button_down_event(&mut self, button: MouseButton, _: f32, _: f32) {

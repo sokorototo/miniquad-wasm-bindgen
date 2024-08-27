@@ -221,7 +221,8 @@ mod shader {
         gl_FragColor = vec4( gradient(shade), 1.0 );
     }"#;
 
-	pub fn meta() -> ShaderMeta {
+
+	 pub fn meta() -> ShaderMeta {
 		ShaderMeta {
 			images: vec![],
 			uniforms: UniformBlockLayout {

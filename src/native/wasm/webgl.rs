@@ -43,7 +43,7 @@ pub const GL_PROGRAM_POINT_SIZE: u32 = 0x8642;
 pub const GL_STENCIL_ATTACHMENT: u32 = 0x8D20;
 pub const GL_DEPTH_ATTACHMENT: u32 = 0x8D00;
 pub const GL_COLOR_ATTACHMENT2: u32 = 0x8CE2;
-pub const GL_COLOR_ATTACHMENT0: u32 = 0x8CE0;
+pub const GL_COLOR_ATTACHMENT0: u32 = WebGl2RenderingContext::COLOR_ATTACHMENT0;
 pub const GL_COLOR_ATTACHMENT22: u32 = 0x8CF6;
 pub const GL_DRAW_FRAMEBUFFER: u32 = 0x8CA9;
 pub const GL_FRAMEBUFFER_COMPLETE: u32 = 0x8CD5;
@@ -401,6 +401,14 @@ pub unsafe fn glBindFramebuffer(target: GLenum, framebuffer: GLuint) {
 	get_gl().bind_framebuffer(target, FRAME_BUFFERS.get(&framebuffer));
 }
 
+pub fn glReadBuffer(src: GLenum) {
+	get_gl().read_buffer(src)
+}
+
+pub fn glBlitFramebuffer(srcX0: GLint, srcY0: GLint, srcX1: GLint, srcY1: GLint, dstX0: GLint, dstY0: GLint, dstX1: GLint, dstY1: GLint, mask: GLbitfield, filter: GLenum) {
+	get_gl().blit_framebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter)
+}
+
 pub unsafe fn glFramebufferTexture2D(target: GLenum, attachment: GLenum, textarget: GLenum, texture: GLuint, level: GLint) {
 	debug_assert!(TEXTURES.contains_key(&texture));
 	let texture = TEXTURES.get(&texture);
@@ -463,6 +471,10 @@ pub unsafe fn glFramebufferRenderbuffer(target: GLenum, attachment: GLenum, rend
 	get_gl().framebuffer_renderbuffer(target, attachment, renderbuffer_target, renderbuffer);
 }
 
+pub fn glRenderbufferStorageMultisample(target: GLenum, samples: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei) {
+	get_gl().renderbuffer_storage_multisample(target, samples, internalformat, width, height);
+}
+
 pub fn glGetRenderbufferParameteriv(target: GLenum, pname: GLenum, _params: *mut GLint) {
 	get_gl().get_renderbuffer_parameter(target, pname);
 	todo!("No reference implementation")
@@ -477,9 +489,8 @@ pub unsafe fn glDeleteRenderbuffers(n: GLsizei, renderbuffers: *const GLuint) {
 	}
 }
 
-pub unsafe fn glCheckFramebufferStatus(target: GLenum) -> GLenum {
-	let Some(_b) = RENDER_BUFFERS.get(&target) else { return 0 };
-	unimplemented!("No reference implementation")
+pub fn glCheckFramebufferStatus(target: GLenum) -> GLenum {
+	get_gl().check_framebuffer_status(target)
 }
 
 // ==================== VERTEX ARRAYS ====================
@@ -1304,7 +1315,6 @@ pub fn glFlush() {
 // 	pub fn glVertexAttrib3fv(index: GLuint, v: *const GLfloat);
 // 	pub fn glVertexAttrib4f(index: GLuint, x: GLfloat, y: GLfloat, z: GLfloat, w: GLfloat);
 // 	pub fn glVertexAttrib4fv(index: GLuint, v: *const GLfloat);
-// 	pub fn glReadBuffer(src: GLenum);
 // 	pub fn glDrawRangeElements(mode: GLenum, start: GLuint, end: GLuint, count: GLsizei, type_: GLenum, indices: *const ::std::os::raw::c_void);
 // 	pub fn glTexImage3D(
 // 		target: GLenum,
@@ -1361,8 +1371,6 @@ pub fn glFlush() {
 // 	pub fn glUniformMatrix4x2fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
 // 	pub fn glUniformMatrix3x4fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
 // 	pub fn glUniformMatrix4x3fv(location: GLint, count: GLsizei, transpose: GLboolean, value: *const GLfloat);
-// 	pub fn glBlitFramebuffer(srcX0: GLint, srcY0: GLint, srcX1: GLint, srcY1: GLint, dstX0: GLint, dstY0: GLint, dstX1: GLint, dstY1: GLint, mask: GLbitfield, filter: GLenum);
-// 	pub fn glRenderbufferStorageMultisample(target: GLenum, samples: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei);
 // 	pub fn glFramebufferTextureLayer(target: GLenum, attachment: GLenum, texture: GLuint, level: GLint, layer: GLint);
 // 	pub fn glMapBufferRange(target: GLenum, offset: GLintptr, length: GLsizeiptr, access: GLbitfield) -> *mut ::std::os::raw::c_void;
 // 	pub fn glFlushMappedBufferRange(target: GLenum, offset: GLintptr, length: GLsizeiptr);

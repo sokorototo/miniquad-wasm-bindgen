@@ -148,15 +148,32 @@ impl From<CompareFunc> for GLenum {
 }
 
 impl Texture {
-	pub fn new(ctx: &mut GlContext, _access: TextureAccess, source: TextureSource, params: TextureParams) -> Texture {
+	pub fn new(ctx: &mut GlContext, access: TextureAccess, source: TextureSource, params: TextureParams) -> Texture {
+		#[cfg(debug_assertions)]
 		if let TextureSource::Bytes(bytes_data) = source {
 			assert_eq!(params.format.size(params.width, params.height) as usize, bytes_data.len());
 		}
 
+		#[cfg(debug_assertions)]
+		if access != TextureAccess::RenderTarget {
+			assert!(params.sample_count == 0, "Multisampling is only supported for render textures");
+		}
+
 		let (internal_format, format, pixel_type) = params.format.into();
 
-		ctx.cache.store_texture_binding(0);
+		if access == TextureAccess::RenderTarget && params.sample_count != 0 {
+			let mut renderbuffer: u32 = 0;
 
+			unsafe {
+				glGenRenderbuffers(1, &mut renderbuffer as *mut _);
+				glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer as _);
+				glRenderbufferStorageMultisample(GL_RENDERBUFFER, params.sample_count, internal_format, params.width as _, params.height as _);
+			}
+
+			return Texture { raw: renderbuffer, params };
+		}
+
+		ctx.cache.store_texture_binding(0);
 		let mut texture: GLuint = 0;
 
 		unsafe {
@@ -388,11 +405,13 @@ fn get_uniform_location(program: GLuint, name: &str) -> Option<i32> {
 
 pub(crate) struct RenderPassInternal {
 	gl_fb: GLuint,
+	resolves: Vec<(u32, TextureId)>,
 	color_textures: Vec<TextureId>,
 	depth_texture: Option<TextureId>,
 }
 
 struct Textures(Vec<Texture>);
+
 impl Textures {
 	fn get(&self, texture: TextureId) -> Texture {
 		match texture.0 {
@@ -438,6 +457,7 @@ impl GlContext {
 				buffers: ResourceManager::default(),
 				textures: Textures(vec![]),
 				cache: GlCache {
+					cur_pass: None,
 					stored_index_buffer: 0,
 					stored_index_type: None,
 					stored_vertex_buffer: 0,
@@ -817,41 +837,72 @@ impl RenderingBackend for GlContext {
 		RawId(texture.raw)
 	}
 
-	fn new_render_pass_mrt(&mut self, color_img: &[TextureId], depth_img: Option<TextureId>) -> RenderPass {
+	fn new_render_pass_mrt(&mut self, color_img: &[TextureId], resolve_img: &[TextureId], depth_img: Option<TextureId>) -> RenderPass {
 		if color_img.is_empty() && depth_img.is_none() {
 			panic!("Render pass should have at least one target");
 		}
 		let mut gl_fb = 0;
 
-		unsafe {
+		let resolves = unsafe {
 			glGenFramebuffers(1, &mut gl_fb);
 			glBindFramebuffer(GL_FRAMEBUFFER, gl_fb);
 
 			for (i, color_img) in color_img.iter().enumerate() {
-				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i as u32, GL_TEXTURE_2D, self.textures.get(*color_img).raw, 0);
-			}
-			if let Some(depth_img) = depth_img {
-				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, self.textures.get(depth_img).raw, 0);
-			}
-			if color_img.len() > 1 {
-				let mut attachments = vec![];
-				for i in 0..color_img.len() {
-					attachments.push(GL_COLOR_ATTACHMENT0 + i as u32);
+				let texture = self.textures.get(*color_img);
+
+				if texture.params.sample_count != 0 {
+					glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i as u32, GL_RENDERBUFFER, texture.raw);
+				} else {
+					glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i as u32, GL_TEXTURE_2D, texture.raw, 0);
 				}
-				glDrawBuffers(2, attachments.as_ptr() as _);
+			}
+
+			if let Some(depth_img) = depth_img {
+				let texture = self.textures.get(depth_img);
+
+				if texture.params.sample_count != 0 {
+					glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, texture.raw);
+				} else {
+					glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, texture.raw, 0);
+				}
+			}
+
+			let attachments = (0..color_img.len()).map(|i| GL_COLOR_ATTACHMENT0 + i as u32).collect::<Vec<_>>();
+			if color_img.len() > 1 {
+				glDrawBuffers(color_img.len() as _, attachments.as_ptr() as _);
 			}
 
 			glBindFramebuffer(GL_FRAMEBUFFER, self.default_framebuffer);
-		}
+
+			resolve_img
+				.iter()
+				.enumerate()
+				.map(|(i, resolve_img)| unsafe {
+					let mut resolve_fb = 0;
+					glGenFramebuffers(1, &mut resolve_fb as *mut _);
+					glBindFramebuffer(GL_FRAMEBUFFER, resolve_fb);
+
+					let texture = self.textures.get(*resolve_img);
+					glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i as u32, GL_TEXTURE_2D, texture.raw, 0);
+					debug_assert!(glCheckFramebufferStatus(GL_FRAMEBUFFER) != 0);
+
+					glDrawBuffers(1, attachments.as_ptr() as _);
+
+					(resolve_fb, *resolve_img)
+				})
+				.collect()
+		};
 
 		let pass = RenderPassInternal {
 			gl_fb,
+			resolves,
 			color_textures: color_img.to_vec(),
 			depth_texture: depth_img,
 		};
 
 		RenderPass(self.passes.add(pass))
 	}
+
 	fn render_pass_color_attachments(&self, render_pass: RenderPass) -> &[TextureId] {
 		&self.passes[render_pass.0].color_textures
 	}
@@ -1231,6 +1282,8 @@ impl RenderingBackend for GlContext {
 	}
 
 	fn begin_pass(&mut self, pass: Option<RenderPass>, action: PassAction) {
+		self.cache.cur_pass = pass;
+
 		let (framebuffer, w, h) = match pass {
 			None => {
 				let (screen_width, screen_height) = window::screen_size();
@@ -1260,6 +1313,24 @@ impl RenderingBackend for GlContext {
 
 	fn end_render_pass(&mut self) {
 		unsafe {
+			if let Some(pass) = self.cache.cur_pass.take() {
+				let pass = &self.passes[pass.0];
+
+				if !pass.resolves.is_empty() {
+					glBindFramebuffer(GL_READ_FRAMEBUFFER, pass.gl_fb);
+
+					for (i, (resolve_fb, resolve_img)) in pass.resolves.iter().enumerate() {
+						let texture = self.textures.get(*resolve_img);
+						let w = texture.params.width;
+						let h = texture.params.height;
+
+						glBindFramebuffer(GL_DRAW_FRAMEBUFFER, *resolve_fb);
+						glReadBuffer(GL_COLOR_ATTACHMENT0 + i as u32);
+						glBlitFramebuffer(0, 0, w as _, h as _, 0, 0, w as _, h as _, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+					}
+				}
+			}
+
 			glBindFramebuffer(GL_FRAMEBUFFER, self.default_framebuffer);
 			self.cache.bind_buffer(GL_ARRAY_BUFFER, 0, None);
 			self.cache.bind_buffer(GL_ELEMENT_ARRAY_BUFFER, 0, None);
