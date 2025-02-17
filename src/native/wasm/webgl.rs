@@ -1,8 +1,4 @@
-//! There is no glGetProcAddr on web.
-//! The only way to get gl functions - actually tell the linker to link with
-//! their gl.js counterparts.
-
-#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals)]
+#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals, static_mut_refs)]
 
 use std::{collections::BTreeMap, slice};
 
@@ -345,11 +341,6 @@ mod counter {
 			COUNTER += 1;
 			COUNTER
 		}
-	}
-
-	#[allow(unused)]
-	pub(crate) fn get() -> u32 {
-		unsafe { COUNTER }
 	}
 }
 
@@ -781,6 +772,7 @@ pub unsafe fn glLinkProgram(program_idx: GLuint) {
 	// A program's uniform table maps the string name of an uniform to an integer location of that uniform.
 	// The global UNIFORMS map maps integer locations to WebGLUniformLocations.
 	let uniforms = gl.get_program_parameter(program, GL_ACTIVE_UNIFORMS).as_f64().unwrap_throw() as u32;
+	
 	for i in 0..uniforms {
 		let active_info = gl.get_active_uniform(program, i).unwrap_throw();
 		let mut name = active_info.name();
@@ -1153,7 +1145,7 @@ pub fn glEndQuery(target: GLenum) {
 
 #[inline(always)]
 pub unsafe fn glDeleteQueries(n: GLsizei, ids: *const GLuint) {
-	debug_assert!(ids.as_ref().is_some());
+	debug_assert!(!ids.is_null());
 
 	for id in slice::from_raw_parts(ids, n as usize) {
 		let query = QUERIES.remove(id);
@@ -1161,14 +1153,38 @@ pub unsafe fn glDeleteQueries(n: GLsizei, ids: *const GLuint) {
 	}
 }
 
+pub fn glGetQueryObjectui64v(id: GLuint, pname: GLenum, params: *mut GLuint64) {
+	let Some(query) = (unsafe { QUERIES.get(&id) }) else {
+		return;
+	};
+
+	match pname {
+		GL_QUERY_RESULT => {
+			let result = get_gl().get_query_parameter(query, pname);
+			let result = result.as_f64().unwrap_throw();
+
+			unsafe { params.as_mut().map(|p| *p = result as u64) };
+		}
+		GL_QUERY_RESULT_AVAILABLE => {
+			let result = get_gl().get_query_parameter(query, pname);
+			let result = result.as_bool().unwrap_throw();
+
+			unsafe { params.as_mut().map(|p| *p = result as u64) };
+		}
+		_ => {}
+	}
+}
+// 	pub fn glGetQueryiv(target: GLenum, pname: GLenum, params: *mut GLint);
+// 	pub fn glQueryCounter(id: GLenum, pname: GLenum);
+// 	pub fn glGetQueryObjectiv(id: GLuint, pname: GLenum, params: *mut GLint);
+
 // ============= BUFFERS ================
 static mut BUFFERS: BTreeMap<u32, WebGlBuffer> = BTreeMap::new();
 
 pub unsafe fn glGenBuffers(n: GLsizei, buffers: *mut GLuint) {
-	let n = n as usize;
-	debug_assert!(buffers.as_ref().is_some());
+	debug_assert!(!buffers.is_null());
 
-	for id in slice::from_raw_parts_mut(buffers, n) {
+	for id in slice::from_raw_parts_mut(buffers, n as _) {
 		if let Some(buffer) = get_gl().create_buffer() {
 			*id = counter::increment();
 			BUFFERS.insert(*id, buffer);
@@ -1198,10 +1214,9 @@ pub unsafe fn glBindBuffer(target: GLenum, buffer: GLuint) {
 }
 
 pub unsafe fn glDeleteBuffers(n: GLsizei, buffers: *const GLuint) {
-	let n = n as usize;
-	debug_assert!(buffers.as_ref().is_some());
+	debug_assert!(!buffers.is_null());
 
-	for id in slice::from_raw_parts(buffers, n) {
+	for id in slice::from_raw_parts(buffers, n as _) {
 		let buffer = BUFFERS.remove(id);
 		get_gl().delete_buffer(buffer.as_ref());
 	}
@@ -1251,6 +1266,7 @@ pub fn glClear(mask: GLbitfield) {
 pub fn glClearStencil(s: GLint) {
 	get_gl().clear_stencil(s)
 }
+
 // ================ * ====================
 #[inline(always)]
 pub fn glFinish() {
@@ -1260,6 +1276,47 @@ pub fn glFinish() {
 #[inline(always)]
 pub fn glFlush() {
 	get_gl().flush();
+}
+
+// ============== Type Checks ==============
+
+pub fn glIsEnabled(cap: GLenum) -> bool {
+	get_gl().is_enabled(cap)
+}
+
+pub fn glIsBuffer(buffer: GLuint) -> bool {
+	let buffer = unsafe { BUFFERS.get(&buffer) };
+	get_gl().is_buffer(buffer)
+}
+
+pub fn glIsFramebuffer(framebuffer: GLuint) -> bool {
+	let framebuffer = unsafe { FRAME_BUFFERS.get(&framebuffer) };
+	get_gl().is_framebuffer(framebuffer)
+}
+
+pub fn glIsProgram(program: GLuint) -> bool {
+	let program = unsafe { PROGRAMS.get(&program) };
+	get_gl().is_program(program)
+}
+
+fn glIsRenderbuffer(renderbuffer: GLuint) -> bool {
+	let renderbuffer = unsafe { RENDER_BUFFERS.get(&renderbuffer) };
+	get_gl().is_renderbuffer(renderbuffer)
+}
+
+pub fn glIsShader(shader: GLuint) -> bool {
+	let shader = unsafe { SHADERS.get(&shader) };
+	get_gl().is_shader(shader)
+}
+
+fn glIsTexture(texture: GLuint) -> bool {
+	let texture = unsafe { TEXTURES.get(&texture) };
+	get_gl().is_texture(texture)
+}
+
+pub fn glIsQuery(id: GLuint) -> bool {
+	let query = unsafe { QUERIES.get(&id) };
+	get_gl().is_query(query)
 }
 
 // extern "C" {
@@ -1280,13 +1337,7 @@ pub fn glFlush() {
 // 	pub fn glGetVertexAttribiv(index: GLuint, pname: GLenum, params: *mut GLint);
 // 	pub fn glGetVertexAttribPointerv(index: GLuint, pname: GLenum, pointer: *mut *mut ::std::os::raw::c_void);
 // 	pub fn glHint(target: GLenum, mode: GLenum);
-// 	pub fn glIsBuffer(buffer: GLuint) -> GLboolean;
-// 	pub fn glIsEnabled(cap: GLenum) -> GLboolean;
-// 	pub fn glIsFramebuffer(framebuffer: GLuint) -> GLboolean;
-// 	pub fn glIsProgram(program: GLuint) -> GLboolean;
-// 	pub fn glIsRenderbuffer(renderbuffer: GLuint) -> GLboolean;
-// 	pub fn glIsShader(shader: GLuint) -> GLboolean;
-// 	pub fn glIsTexture(texture: GLuint) -> GLboolean;
+
 // 	pub fn glLineWidth(width: GLfloat);
 // 	pub fn glPolygonOffset(factor: GLfloat, units: GLfloat);
 // 	pub fn glReleaseShaderCompiler();
@@ -1356,12 +1407,6 @@ pub fn glFlush() {
 // 		imageSize: GLsizei,
 // 		data: *const ::std::os::raw::c_void,
 // 	);
-
-// 	pub fn glIsQuery(id: GLuint) -> GLboolean;
-// 	pub fn glGetQueryiv(target: GLenum, pname: GLenum, params: *mut GLint);
-// 	pub fn glQueryCounter(id: GLenum, pname: GLenum);
-// 	pub fn glGetQueryObjectiv(id: GLuint, pname: GLenum, params: *mut GLint);
-// 	pub fn glGetQueryObjectui64v(id: GLuint, pname: GLenum, params: *mut GLuint64);
 
 // 	pub fn glUnmapBuffer(target: GLenum) -> GLboolean;
 // 	pub fn glGetBufferPointerv(target: GLenum, pname: GLenum, params: *mut *mut ::std::os::raw::c_void);

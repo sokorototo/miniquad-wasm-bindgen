@@ -800,21 +800,13 @@ pub struct BufferId(usize);
 ///
 #[derive(Clone)]
 pub struct ElapsedQuery {
-	gl_query: GLuint,
-}
-
-/// TODO: Complete Implementation
-#[allow(unused_unsafe)]
-impl Default for ElapsedQuery {
-	fn default() -> Self {
-		Self::new()
-	}
+	gl_query: Option<GLuint>,
 }
 
 #[allow(unused_unsafe)]
 impl ElapsedQuery {
 	pub fn new() -> ElapsedQuery {
-		ElapsedQuery { gl_query: 0 }
+		ElapsedQuery { gl_query: None }
 	}
 
 	/// Submit a beginning of elapsed-time query.
@@ -830,10 +822,16 @@ impl ElapsedQuery {
 	///
 	/// Use [`ElapsedQuery::is_supported()`] to check if functionality is available and the method can be called.
 	pub fn begin_query(&mut self) {
-		if self.gl_query == 0 {
-			unsafe { glGenQueries(1, &mut self.gl_query) };
-		}
-		unsafe { glBeginQuery(GL_TIME_ELAPSED, self.gl_query) };
+		let gl_query = match self.gl_query.as_mut() {
+			Some(g) => g,
+			None => {
+				let mut id = 0;
+				unsafe { glGenQueries(1, &mut id) };
+				self.gl_query.insert(id)
+			}
+		};
+
+		unsafe { glBeginQuery(GL_TIME_ELAPSED, *gl_query) };
 	}
 
 	/// Submit an end of elapsed-time query that can be read later when rendering is complete.
@@ -846,53 +844,31 @@ impl ElapsedQuery {
 		unsafe { glEndQuery(GL_TIME_ELAPSED) };
 	}
 
-	/// Retreieve measured duration in nanonseconds.
-	///
-	/// Note that the result may be ready only couple frames later due to asynchronous nature of GPU
-	/// command submission. Use [`ElapsedQuery::is_available()`] to check if the result is
-	/// available for retrieval.
-	///
-	/// Use [`ElapsedQuery::is_supported()`] to check if functionality is available and the method can be called.
+	/// Retrieve measured duration in nanoseconds. None if query hasn't started or isn't available
 	pub fn get_result(&self) -> Option<u64> {
-		// let mut time: GLuint64 = 0;
-		// assert!(self.gl_query != 0);
-		// unsafe { glGetQueryObjectui64v(self.gl_query, GL_QUERY_RESULT, &mut time) };
-		// time
-		unimplemented!("ElapsedQuery::get_result()")
-	}
+		let gl_query = self.gl_query?;
 
-	/// Reports whenever elapsed timer is supported and other methods can be invoked.
-	pub fn is_supported() -> bool {
-		unimplemented!();
-		//unsafe { sapp_is_elapsed_timer_supported() }
-	}
+		let mut ready = 0;
+		unsafe { glGetQueryObjectui64v(gl_query, GL_QUERY_RESULT_AVAILABLE, &mut ready) };
 
-	/// Reports whenever result of submitted query is available for retrieval with
-	/// [`ElapsedQuery::get_result()`].
-	///
-	/// Note that the result may be ready only couple frames later due to asynchrnous nature of GPU
-	/// command submission.
-	///
-	/// Use [`ElapsedQuery::is_supported()`] to check if functionality is available and the method can be called.
-	pub fn is_available(&self) -> bool {
-		// let mut available: GLint = 0;
+		if ready == 0 {
+			return None;
+		}
 
-		// // begin_query was not called yet
-		// if self.gl_query == 0 {
-		//     return false;
-		// }
+		let mut time = 0;
+		unsafe { glGetQueryObjectui64v(gl_query, GL_QUERY_RESULT, &mut time) };
 
-		//unsafe { glGetQueryObjectiv(self.gl_query, GL_QUERY_RESULT_AVAILABLE, &mut available) };
-		//available != 0
-
-		false
+		Some(time)
 	}
 }
 
 impl Drop for ElapsedQuery {
 	fn drop(&mut self) {
-		unsafe { glDeleteQueries(1, &mut self.gl_query) }
-		self.gl_query = 0;
+		unsafe {
+			if let Some(id) = self.gl_query.take() {
+				glDeleteQueries(1, &id);
+			}
+		}
 	}
 }
 

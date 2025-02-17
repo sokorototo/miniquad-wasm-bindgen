@@ -141,8 +141,7 @@ pub mod window {
 	/// On WASM this will automatically hide cursor
 	/// On desktop this will bound cursor to windows border
 	/// NOTICE: on desktop cursor will not be automatically released after window lost focus
-	///         so set_cursor_grab(false) on window's focus lost is recommended.
-	/// TODO: implement window focus events
+	/// so set_cursor_grab(false) on window's focus lost is recommended.
 	pub fn set_cursor_grab(grab: bool) {
 		let d = native_display().lock().unwrap();
 		d.native_requests.send(native::Request::SetCursorGrab(grab)).unwrap();

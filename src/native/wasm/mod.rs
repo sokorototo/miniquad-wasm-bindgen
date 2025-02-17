@@ -25,8 +25,9 @@ fn get_dpi_scale(high_dpi: bool) -> f64 {
 
 // SAFETY: Can't have a data race in a single threaded environment, web is single threaded
 fn get_event_handler(insert: Option<*mut dyn EventHandler>) -> &'static mut dyn EventHandler {
+	static mut EVENT_HANDLER: Option<*mut dyn EventHandler> = None;
+
 	unsafe {
-		static mut EVENT_HANDLER: Option<*mut dyn EventHandler> = None;
 		EVENT_HANDLER = EVENT_HANDLER.or(insert);
 		&mut *EVENT_HANDLER.unwrap()
 	}
