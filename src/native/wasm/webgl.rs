@@ -333,14 +333,12 @@ pub(crate) fn get_gl() -> &'static WebGl2RenderingContext {
 }
 
 mod counter {
-	static mut COUNTER: u32 = 0;
+	use std::sync::atomic::{AtomicU32, Ordering};
+
+	static COUNTER: AtomicU32 = AtomicU32::new(256);
 
 	pub(crate) fn increment() -> u32 {
-		unsafe {
-			// COUNTER is always greater than zero
-			COUNTER += 1;
-			COUNTER
-		}
+		COUNTER.fetch_add(1, Ordering::Relaxed)
 	}
 }
 
@@ -772,7 +770,7 @@ pub unsafe fn glLinkProgram(program_idx: GLuint) {
 	// A program's uniform table maps the string name of an uniform to an integer location of that uniform.
 	// The global UNIFORMS map maps integer locations to WebGLUniformLocations.
 	let uniforms = gl.get_program_parameter(program, GL_ACTIVE_UNIFORMS).as_f64().unwrap_throw() as u32;
-	
+
 	for i in 0..uniforms {
 		let active_info = gl.get_active_uniform(program, i).unwrap_throw();
 		let mut name = active_info.name();
