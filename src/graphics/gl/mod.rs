@@ -1095,14 +1095,12 @@ impl RenderingBackend for GlContext {
 			assert!(data.element_size as u32 == buffer.index_type.unwrap());
 		};
 
-		let size = data.size;
-
-		assert!(size <= buffer.size);
+		assert!(data.size <= buffer.size);
 
 		let gl_target = gl_buffer_target(&buffer.buffer_type);
 		self.cache.store_buffer_binding(gl_target);
 		self.cache.bind_buffer(gl_target, buffer.gl_buf, buffer.index_type);
-		unsafe { glBufferSubData(gl_target, 0, size as _, data.ptr as _) };
+		unsafe { glBufferSubData(gl_target, 0, data.size as _, data.ptr as _) };
 		self.cache.restore_buffer_binding(gl_target);
 	}
 

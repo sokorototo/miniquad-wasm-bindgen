@@ -1,4 +1,5 @@
 #![allow(non_snake_case, non_camel_case_types, non_upper_case_globals, static_mut_refs)]
+#![warn(unused)]
 
 use std::{collections::BTreeMap, slice};
 
@@ -41,7 +42,7 @@ pub const GL_DEPTH_ATTACHMENT: u32 = 0x8D00;
 pub const GL_COLOR_ATTACHMENT2: u32 = 0x8CE2;
 pub const GL_COLOR_ATTACHMENT0: u32 = WebGl2RenderingContext::COLOR_ATTACHMENT0;
 pub const GL_COLOR_ATTACHMENT22: u32 = 0x8CF6;
-pub const GL_DRAW_FRAMEBUFFER: u32 = 0x8CA9;
+pub const GL_DRAW_FRAMEBUFFER: u32 = WebGl2RenderingContext::DRAW_FRAMEBUFFER;
 pub const GL_FRAMEBUFFER_COMPLETE: u32 = 0x8CD5;
 pub const GL_NUM_EXTENSIONS: u32 = 0x821D;
 pub const GL_INFO_LOG_LENGTH: u32 = 0x8B84;
@@ -1282,38 +1283,38 @@ pub fn glIsEnabled(cap: GLenum) -> bool {
 	get_gl().is_enabled(cap)
 }
 
-pub fn glIsBuffer(buffer: GLuint) -> bool {
-	let buffer = unsafe { BUFFERS.get(&buffer) };
+pub unsafe fn glIsBuffer(buffer: GLuint) -> bool {
+	let buffer = BUFFERS.get(&buffer);
 	get_gl().is_buffer(buffer)
 }
 
-pub fn glIsFramebuffer(framebuffer: GLuint) -> bool {
-	let framebuffer = unsafe { FRAME_BUFFERS.get(&framebuffer) };
+pub unsafe fn glIsFramebuffer(framebuffer: GLuint) -> bool {
+	let framebuffer = FRAME_BUFFERS.get(&framebuffer);
 	get_gl().is_framebuffer(framebuffer)
 }
 
-pub fn glIsProgram(program: GLuint) -> bool {
-	let program = unsafe { PROGRAMS.get(&program) };
+pub unsafe fn glIsProgram(program: GLuint) -> bool {
+	let program = PROGRAMS.get(&program);
 	get_gl().is_program(program)
 }
 
-fn glIsRenderbuffer(renderbuffer: GLuint) -> bool {
-	let renderbuffer = unsafe { RENDER_BUFFERS.get(&renderbuffer) };
+pub unsafe fn glIsRenderbuffer(renderbuffer: GLuint) -> bool {
+	let renderbuffer = RENDER_BUFFERS.get(&renderbuffer);
 	get_gl().is_renderbuffer(renderbuffer)
 }
 
-pub fn glIsShader(shader: GLuint) -> bool {
-	let shader = unsafe { SHADERS.get(&shader) };
+pub unsafe fn glIsShader(shader: GLuint) -> bool {
+	let shader = SHADERS.get(&shader);
 	get_gl().is_shader(shader)
 }
 
-fn glIsTexture(texture: GLuint) -> bool {
-	let texture = unsafe { TEXTURES.get(&texture) };
+pub unsafe fn glIsTexture(texture: GLuint) -> bool {
+	let texture = TEXTURES.get(&texture);
 	get_gl().is_texture(texture)
 }
 
-pub fn glIsQuery(id: GLuint) -> bool {
-	let query = unsafe { QUERIES.get(&id) };
+pub unsafe fn glIsQuery(id: GLuint) -> bool {
+	let query = QUERIES.get(&id);
 	get_gl().is_query(query)
 }
 
